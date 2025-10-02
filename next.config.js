@@ -1,7 +1,9 @@
-// next.config.js
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Your Next.js configuration options go here
+  experimental: {
+    // Disable LightningCSS (use PostCSS instead)
+    optimizeCss: false,
+  },
 };
 
 module.exports = nextConfig;
