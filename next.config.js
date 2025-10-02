@@ -2,14 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    optimizeCss: false, // fallback to PostCSS
+    optimizeFonts: false, // disable next/font optimization
   },
-  swcMinify: false, // optional: disables SWC minifier
-  fontLoaders: [], // disables next/font auto loaders
-  experimental: {
-    optimizeCss: false,
-    optimizeFonts: false // disable automatic font optimization
-  }
 };
 
 module.exports = nextConfig;
