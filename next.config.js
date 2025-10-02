@@ -2,11 +2,10 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    // Disable LightningCSS (this forces PostCSS fallback)
-    optimizeCss: false,
+    optimizeCss: false, // disables LightningCSS
     optimizeFonts: false
   },
-  swcMinify: false, // Optional: sometimes SWC minifier triggers LightningCSS
+  swcMinify: false, // prevents SWC from trying LightningCSS
 };
 
 module.exports = nextConfig;
