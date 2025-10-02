@@ -1,57 +1,72 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-// Correct import for motion/AnimatePresence in Framer Motion
-import { motion, AnimatePresence } from 'framer-motion'; 
+import { motion, AnimatePresence } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-// Removed unused Badge import
+import { Badge } from '@/components/ui/badge';
+
 import { 
+  Star,
   ChevronLeft,
   ChevronRight,
+  Heart,
+  ShoppingCart,
   Sparkles
 } from 'lucide-react';
-
-// Adjusted imports to match your new Next.js structure paths (using @/)
 import { homeService } from '@/services/home.service';
-import { productService } from '@/services/product.service';
+import { cartService } from '@/services/cart.service';
 import { mockBanners } from '@/data/products.data';
 import { getHomepageCategories } from '@/data/categories.data';
-import { ProductCard } from '@/components/general/ProductCard'; // Assuming ProductCard is here
-import { CategoryCard } from '@/components/general/CategoryCard'; // Assuming CategoryCard is here
+import { ProductCard } from './ProductCard';
+import { CategoryCard } from './CategoryCard';
 import { Product } from '@/models/interfaces/product.interface';
 import { Category } from '@/models/interfaces/categories.interface';
-import { LoginPageInline } from '@/components/general/LoginPageInline';
-import { useMainContext } from '@/context/MainContext'; 
+import { PRODUCT_MESSAGES } from '@/constants/product.messages';
+import { toast } from 'sonner';
 
+interface HomePageProps {
+  currentView: 'home' | 'login' | 'wishlist' | 'cart' | 'category' | 'checkout' | 'profile' | 'dashboard' | 'image-generation';
+  showLoginInline?: boolean;
+  onProductClick?: (productSlug: string) => void;
+  categories?: Category[];
+  onCategoryClick?: (categorySlug: string) => void;
+  onImageGenerationClick?: () => void;
+}
 
-export function HomePage( ) {
-
-  // 🔥 Use the context hook to get state and handlers
-  const { 
-    showLoginInline, 
-    handleProductClick, 
-    handleCategoryClick, 
-    handleImageGenerationClick,
-    handleLogin,
-    handleCloseLogin,
-  } = useMainContext();
-
-
+export function HomePage({ 
+  currentView, 
+  showLoginInline = false, 
+  onProductClick,
+  categories,
+  onCategoryClick,
+  onImageGenerationClick
+}: HomePageProps) {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [banners] = useState(mockBanners);
   const [popularProducts, setPopularProducts] = useState<Product[]>([]);
   const [homepageCategories, setHomepageCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const handleAddToCart = async (productId: string) => {
+    try {
+      const response = await cartService.addToCart(productId, 1);
+      if (response.success) {
+        toast.success(PRODUCT_MESSAGES.ADDED_TO_CART);
+      } else {
+        toast.error(response.message || 'Failed to add item to cart');
+      }
+    } catch (error) {
+      toast.error('Failed to add item to cart');
+    }
+  };
+
   // Load popular products and categories
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Fetch first 8 products from API
-        const products = await productService.getProductsFromApi({ per_page: 8 });
+        const products = await homeService.getPopularProducts(8);
         setPopularProducts(products);
         
+        // Get categories for homepage (shows chain subcategories separately)
         const homeCategories = getHomepageCategories();
         setHomepageCategories(homeCategories);
       } catch (error) {
@@ -72,7 +87,21 @@ export function HomePage( ) {
     return () => clearInterval(interval);
   }, [banners.length]);
 
-  // Removed redundant formatPrice and local handleCategoryClick
+
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  const handleCategoryClick = (categorySlug: string) => {
+    if (onCategoryClick) {
+      onCategoryClick(categorySlug);
+    }
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -92,11 +121,6 @@ export function HomePage( ) {
       transition: { duration: 0.3 }
     }
   };
-  
-  useEffect(() => {
-    document.documentElement.classList.add('dark');
-  }, []);
-
 
   if (isLoading) {
     return (
@@ -127,7 +151,7 @@ export function HomePage( ) {
     >
       {/* Main Content */}
       <main>
-        {/* 🔥 Hero Banners (Top Image Slider) - RE-INTEGRATED */}
+        {/* Hero Banners */}
         <section className="relative h-64 md:h-96 lg:h-[500px] overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
@@ -139,7 +163,7 @@ export function HomePage( ) {
               transition={{ duration: 0.5 }}
             >
               <img
-                src={banners[currentBanner].imageUrl}
+                src={banners[currentBanner].image}
                 alt={banners[currentBanner].title}
                 className="w-full h-full object-cover"
               />
@@ -199,7 +223,7 @@ export function HomePage( ) {
           </motion.button>
         </section>
 
-        {/* Categories Grid (Unchanged, uses handleCategoryClick from context) */}
+        {/* Categories Grid */}
         <motion.section 
           className="py-12 lg:py-16 px-4 lg:px-6"
           variants={itemVariants}
@@ -214,23 +238,29 @@ export function HomePage( ) {
             >
               Shop by Category
             </motion.h2>
+            {/* Categories organized in responsive grid - 2 rows on desktop */}
             <div className="max-w-7xl mx-auto">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
                 {homepageCategories.map((category, index) => (
                   <CategoryCard
                     key={category.slug}
                     category={category}
-                    onClick={handleCategoryClick} 
+                    onClick={handleCategoryClick}
                     index={index}
-                    className="h-full"
+                    className="h-full" // Ensure consistent heights across the grid
                   />
                 ))}
               </div>
+              
+              {/* Grid explanation comment for reference: */}
+              {/* Mobile (2 cols): Cards stack vertically with good spacing */}
+              {/* Tablet (3 cols): Clean 3x3 grid layout */} 
+              {/* Desktop (5 cols): 5 cards in first row, 4 in second row for balanced appearance */}
             </div>
           </div>
         </motion.section>
 
-        {/* Popular Products (Unchanged, uses handleProductClick from context) */}
+        {/* Popular Products */}
         <motion.section 
           className="py-12 lg:py-16 px-4 lg:px-6 bg-muted/30"
           variants={itemVariants}
@@ -257,7 +287,8 @@ export function HomePage( ) {
                   key={product.id}
                   product={product}
                   index={index}
-                  onClick={handleProductClick}
+                  onClick={onProductClick}
+                  onAddToCartClick={handleAddToCart}
                   variant="featured"
                   showActions={true}
                 />
@@ -266,7 +297,7 @@ export function HomePage( ) {
           </div>
         </motion.section>
 
-        {/* 🔥 AI Try-On Feature - COMMENTED OUT FOR LATER USE
+        {/* AI Try-On Feature */}
         <motion.section 
           className="py-12 lg:py-16 px-4 lg:px-6 bg-muted/20"
           variants={itemVariants}
@@ -328,7 +359,7 @@ export function HomePage( ) {
                         whileTap={{ scale: 0.98 }}
                       >
                         <Button 
-                          onClick={handleImageGenerationClick}
+                          onClick={onImageGenerationClick}
                           className="w-full lg:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-lg px-8 py-3 h-12 shadow-lg hover:shadow-xl transition-all"
                         >
                           <Sparkles className="mr-2 h-5 w-5" />
@@ -358,6 +389,7 @@ export function HomePage( ) {
                         </motion.div>
                       </motion.div>
                       
+                      {/* Floating elements */}
                       <motion.div
                         className="absolute -top-4 -right-4 w-8 h-8 bg-primary/20 rounded-full"
                         animate={{ 
@@ -389,9 +421,8 @@ export function HomePage( ) {
             </motion.div>
           </div>
         </motion.section>
-        */}
 
-        {/* CTA Section (Unchanged) */}
+        {/* CTA Section */}
         <motion.section 
           className="py-16 lg:py-20 px-4 lg:px-6 bg-gradient-to-r from-primary/10 to-accent/10"
           variants={itemVariants}
@@ -426,34 +457,7 @@ export function HomePage( ) {
         </motion.section>
       </main>
 
-      {/* CONDITIONAL RENDERING Inline Login Modal LoginPageInline  (Using context state/handlers) */}
-      <AnimatePresence>
-        {showLoginInline && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={handleCloseLogin} 
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md"
-            >
-              <LoginPageInline 
-                onLogin={handleLogin} 
-                onClose={handleCloseLogin} 
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </motion.div>
   );
 }
-
-export default HomePage;

@@ -1,0 +1,227 @@
+import { mockProducts, mockRecentlyViewed, getSimilarProducts } from '@/data/products.data';
+import { Product } from '@/models/interfaces/product.interface';
+import { BACKEND_ROUTES } from '@/constants/routes/routes.constants';
+import { httpService } from '@/services/http.service';
+
+export interface ProductService {
+  // API-backed
+  getProductsFromApi(params?: ProductQueryParams): Promise<Product[]>;
+  getProductBySlug(slug: string): Promise<Product | null>;
+  getProductBySlugFromApi(slug: string): Promise<Product | null>;
+  getProducts(): Promise<Product[]>;
+  getFeaturedProducts(): Promise<Product[]>;
+  getProductsByCategory(categoryId: string): Promise<Product[]>;
+  getSimilarProducts(productId: string, categoryId: string): Promise<Product[]>;
+  getRecentlyViewedProducts(): Promise<Product[]>;
+  addToRecentlyViewed(productId: number | string): Promise<void>;
+  searchProducts(query: string): Promise<Product[]>;
+}
+
+export interface ProductQueryParams {
+  page?: number;
+  per_page?: number;
+  category_id?: number;
+  min_price?: number;
+  max_price?: number;
+  featured?: boolean;
+  search?: string;
+}
+
+class ProductServiceImpl implements ProductService {
+  private recentlyViewed: Product[] = [...mockRecentlyViewed];
+
+  private mapApiProduct(p: any): Product {
+    return this.productResponseTransform(p);
+  }
+
+  private productResponseTransform(p: any): Product {
+    const FALLBACK_IMAGE = 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/CHAINS.JPG';
+    const toNumber = (v: any): number | null => {
+      if (v === null || v === undefined || v === '') return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+
+    const rawImage = (p.image_url ?? '').toString();
+    const hasValidImage = rawImage && rawImage.toLowerCase() !== 'string';
+    const imageUrl = hasValidImage ? rawImage : FALLBACK_IMAGE;
+
+    return {
+      id: Number(p.id),
+      name: p.name ?? '',
+      slug: p.slug ?? String(p.id), 
+      description: p.description ?? null,
+      price: Number(p.price ?? 0),
+      offer_price: p.offer_price != null ? Number(p.offer_price) : null,
+      stock: Number(p.stock ?? 0),
+      material: p.material ?? null,
+      weight: toNumber(p.weight),
+      dimensions: p.dimensions ?? null,
+      is_active: Boolean(p.is_active),
+      featured: Boolean(p.featured),
+      category_id: p.category_id != null ? Number(p.category_id) : null,
+      image_url: imageUrl,
+      created_at: p.created_at ?? new Date().toISOString(),
+      images: Array.isArray(p.images) && p.images.length > 0 ? p.images : [imageUrl],
+      specifications: p.specifications ?? undefined,
+      care_instructions: p.care_instructions ?? undefined,
+      tags: p.tags ?? undefined
+    } as Product;
+  }
+
+  private buildQuery(params?: ProductQueryParams): string {
+    if (!params) return '';
+    const searchParams = new URLSearchParams();
+    if (params.page != null) searchParams.set('page', String(params.page));
+    if (params.per_page != null) searchParams.set('per_page', String(params.per_page));
+    if (params.category_id != null) searchParams.set('category_id', String(params.category_id));
+    if (params.min_price != null) searchParams.set('min_price', String(params.min_price));
+    if (params.max_price != null) searchParams.set('max_price', String(params.max_price));
+    if (params.featured != null) searchParams.set('featured', String(params.featured));
+    if (params.search) searchParams.set('search', params.search);
+    const qs = searchParams.toString();
+    return qs ? `?${qs}` : '';
+  }
+
+  async getProductsFromApi(params?: ProductQueryParams): Promise<Product[]> {
+    try {
+      const base = BACKEND_ROUTES.PRODUCTS;
+      if (!base) throw new Error('PRODUCTS route not configured');
+      const url = `${base}${this.buildQuery(params)}`;
+      const res = await httpService.get(url);
+      if (!res.ok) throw new Error(`Failed to fetch products (${res.status})`);
+      const data = await res.json();
+      if (!Array.isArray(data)) throw new Error('Unexpected products response');
+      return data.map((p: any) => this.mapApiProduct(p));
+    } catch (e) {
+      // Fallback to mock products to keep UI functional
+      return mockProducts.slice(0, params?.per_page ?? 20);
+    }
+  }
+
+  async getProductBySlug(slug: string): Promise<Product | null> {
+    // Try to get product from API first
+    try {
+      return await this.getProductBySlugFromApi(slug);
+    } catch (error) {
+      console.error("API call failed, falling back to mock data", error);
+      
+      // Fallback to mock data if API fails
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Find in products.data.ts
+      const product = mockProducts.find(p => p.slug === slug && p.is_active);
+      
+      if (product) {
+        // Add to recently viewed
+        await this.addToRecentlyViewed(product.id);
+      }
+      return product || null;
+    }
+  }
+  
+  async getProductBySlugFromApi(slug: string): Promise<Product | null> {
+    try {
+      const base = BACKEND_ROUTES.PRODUCTFROMSLUG(slug);
+      if (!base) throw new Error('PRODUCTS SULG route not configured');
+      const url = `${base}`;
+      
+      const res = await httpService.get(url);
+      if (!res.ok) throw new Error(`Failed to fetch product (${res.status})`);
+      
+      const data = await res.json();
+      if (!data || typeof data !== 'object') throw new Error('Unexpected product response format');
+      
+      const product = this.productResponseTransform(data);
+      
+      // Add to recently viewed
+      if (product) {
+        await this.addToRecentlyViewed(product.id);
+      }
+      
+      return product;
+    } catch (e) {
+      console.error(`Error fetching product by slug: ${slug}`, e);
+      throw e; // Re-throw to allow fallback in getProductBySlug
+    }
+  }
+
+  async getProducts(): Promise<Product[]> {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return mockProducts.filter(p => p.is_active);
+  }
+
+  async getFeaturedProducts(): Promise<Product[]> {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    return mockProducts.filter(p => p.is_active && p.featured);
+  }
+
+  async getProductsByCategory(categoryId: string): Promise<Product[]> {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    return mockProducts.filter(p => p.is_active && p.category_id === categoryId);
+  }
+
+  async getSimilarProducts(productId: string, categoryId: string): Promise<Product[]> {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return getSimilarProducts(productId, categoryId);
+  }
+
+  async getRecentlyViewedProducts(): Promise<Product[]> {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return this.recentlyViewed;
+  }
+
+  async addToRecentlyViewed(productId: number | string): Promise<void> {
+    const idNum = Number(productId);
+    const product = mockProducts.find(p => p.id === idNum);
+    if (product) {
+      // Remove if already exists
+      this.recentlyViewed = this.recentlyViewed.filter(p => p.id !== idNum);
+      // Add to beginning
+      this.recentlyViewed.unshift(product);
+      // Keep only last 6 items
+      this.recentlyViewed = this.recentlyViewed.slice(0, 6);
+    }
+  }
+
+  async searchProducts(query: string): Promise<Product[]> {
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    if (!query.trim()) {
+      return [];
+    }
+
+    const searchTerm = query.toLowerCase().trim();
+    const searchWords = searchTerm.split(' ').filter(word => word.length > 0);
+    
+    // Search in mock products
+    const results = mockProducts.filter(p => {
+      if (!p.is_active) return false;
+      
+      const searchableText = [
+        p.name.toLowerCase(),
+        (p.description ?? '').toLowerCase(),
+        (p.material ?? '').toLowerCase(),
+        String(p.category_id ?? '').toLowerCase(),
+        ...((p.tags ?? []).map((tag: string) => tag.toLowerCase())),
+        ...Object.values(p.specifications ?? {}).map((spec) => String(spec).toLowerCase())
+      ].join(' ');
+      
+      // Check if all search words are found in the searchable text
+      return searchWords.every(word => searchableText.includes(word)) ||
+             // Or if the exact phrase is found
+             searchableText.includes(searchTerm);
+    });
+
+    // Sort results by relevance (exact matches first, then partial matches), then by name
+    return results.sort((a, b) => {
+      const aNameMatch = a.name.toLowerCase().includes(searchTerm);
+      const bNameMatch = b.name.toLowerCase().includes(searchTerm);
+      if (aNameMatch && !bNameMatch) return -1;
+      if (!aNameMatch && bNameMatch) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+}
+
+export const productService = new ProductServiceImpl();
