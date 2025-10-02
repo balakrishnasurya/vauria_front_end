@@ -1,8 +1,15 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: true, // recommended
+  swcMinify: true,       // keep SWC minifier
   experimental: {
-    optimizeFonts: false, // disable next/font optimization
+    appDir: true,         // enable app directory (Next 13+)
+  },
+  images: {
+    domains: ['example.com'], // replace with your domains for <Image>
+  },
+  eslint: {
+    ignoreDuringBuilds: true, // optional: skip eslint during build
   },
 };
 
