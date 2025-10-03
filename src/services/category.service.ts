@@ -1,17 +1,21 @@
 import { 
-  categoryMockData, 
+  categoryMockData
+} from '@/data/products.data';
+import { 
   type Product, 
   type CategoryProducts, 
   type SortOption, 
   type FilterOptions 
-} from '@/data/products.data';
+} from '@/models/interfaces/product.interface';
 import { 
   mockCategories, 
   getAllCategories, 
   getCategoryBySlug as getCategoryBySlugFromData,
-  getMainCategories,
-  type Category 
+  getMainCategories
 } from '@/data/categories.data';
+import { 
+  type Category 
+} from '@/models/interfaces/categories.interface';
 import { MESSAGES } from '../constants/messages.constants';
 
 export interface CategoryServiceResponse<T> {
@@ -183,8 +187,9 @@ class CategoryService {
       ];
 
       const materials = [...new Set(products.flatMap(p => p.material || []))];
-      const colors = [...new Set(products.flatMap(p => p.color || []))];
-      const sizes = [...new Set(products.flatMap(p => p.size || []))];
+      // For now, we'll use empty arrays for colors and sizes since these properties don't exist in Product interface
+      const colors: string[] = [];
+      const sizes: string[] = [];
 
       return {
         data: {
@@ -232,18 +237,20 @@ class CategoryService {
       }
 
       // Color filter
-      if (filters.colors && filters.colors.length > 0) {
-        if (!product.color || !filters.colors.some(c => product.color?.includes(c))) {
-          return false;
-        }
-      }
+      // Color filter disabled since Product interface doesn't have color property
+      // if (filters.colors && filters.colors.length > 0) {
+      //   if (!product.color || !filters.colors.some(c => product.color?.includes(c))) {
+      //     return false;
+      //   }
+      // }
 
       // Size filter
-      if (filters.sizes && filters.sizes.length > 0) {
-        if (!product.size || !filters.sizes.some(s => product.size?.includes(s))) {
-          return false;
-        }
-      }
+      // Size filter disabled since Product interface doesn't have size property
+      // if (filters.sizes && filters.sizes.length > 0) {
+      //   if (!product.size || !filters.sizes.some(s => product.size?.includes(s))) {
+      //     return false;
+      //   }
+      // }
 
       // Rating filter removed - no longer supported
 
@@ -266,7 +273,7 @@ class CategoryService {
       
       case 'newest':
         return sorted.sort((a, b) => 
-          new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
         );
       
       case 'popularity':

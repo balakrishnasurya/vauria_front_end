@@ -70,8 +70,8 @@ export function ProductPage({
         // Load similar products and recently viewed
         const [similar, recent] = await Promise.all([
           productService.getSimilarProducts(
-            productData.id,
-            productData.category_id,
+            productData.id.toString(),
+            productData.category_id?.toString() || '',
           ),
           productService.getRecentlyViewedProducts(),
         ]);
@@ -102,7 +102,7 @@ export function ProductPage({
     if (product && product.stock > 0) {
       try {
         const response = await cartService.addToCart(
-          product.id,
+          product.id.toString(),
           quantity,
         );
         if (response.success) {
@@ -154,19 +154,17 @@ export function ProductPage({
   };
 
   const nextImage = () => {
-    if (product && product.images && product.images.length > 0) {
-      setSelectedImageIndex((prev) =>
-        prev === product.images.length - 1 ? 0 : prev + 1,
-      );
-    }
+    if (!product?.images || product.images.length <= 1) return;
+    setSelectedImageIndex((prev) =>
+      prev === product.images!.length - 1 ? 0 : prev + 1,
+    );
   };
 
   const prevImage = () => {
-    if (product && product.images && product.images.length > 0) {
-      setSelectedImageIndex((prev) =>
-        prev === 0 ? product.images.length - 1 : prev - 1,
-      );
-    }
+    if (!product?.images || product.images.length <= 1) return;
+    setSelectedImageIndex((prev) =>
+      prev === 0 ? product.images!.length - 1 : prev - 1,
+    );
   };
 
   if (loading) {
@@ -732,7 +730,7 @@ export function ProductPage({
                     {PRODUCT_MESSAGES.SPECIFICATIONS}
                   </h3>
                   <div className="space-y-3">
-                    {Object.entries(product.specifications).map(
+                    {product.specifications && Object.entries(product.specifications).map(
                       ([key, value]) => (
                         <div
                           key={key}
@@ -766,7 +764,7 @@ export function ProductPage({
                     {PRODUCT_MESSAGES.CARE_INSTRUCTIONS}
                   </h3>
                   <ul className="space-y-2">
-                    {product.care_instructions.map(
+                    {product.care_instructions && product.care_instructions.map(
                       (instruction, index) => (
                         <li
                           key={index}
@@ -795,7 +793,7 @@ export function ProductPage({
                     Tags
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {product.tags.map((tag, index) => (
+                    {product.tags && product.tags.map((tag, index) => (
                       <Badge
                         key={index}
                         variant="secondary"

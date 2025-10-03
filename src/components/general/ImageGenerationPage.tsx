@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 import { toast } from 'sonner';
-import { Product } from '@/data/products.data';
+import { type Product } from '@/models/interfaces/product.interface';
 import { productService } from '@/services/product.service';
 import { wishlistService } from '@/services/wishlist.service';
 import { cartService } from '@/services/cart.service';
@@ -69,12 +69,12 @@ export function ImageGenerationPage({
       const [wishlistProducts, cartProducts] = await Promise.all([
         Promise.all((wishlistItems.data || []).slice(0, 6).map(item => 
           productService.getProducts().then(products => 
-            products.find(p => p.id === item.productId || p.id === item.id)
+            products.find(p => p.id === item.id)
           )
         )),
         Promise.all((cartItems.data || []).slice(0, 6).map(item => 
           productService.getProducts().then(products => 
-            products.find(p => p.id === item.productId || p.id === item.id)
+            products.find(p => p.id === item.id)
           )
         ))
       ]);
@@ -203,7 +203,7 @@ export function ImageGenerationPage({
             <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg">
               <div className="aspect-square overflow-hidden">
                 <ImageWithFallback
-                  src={product.image_url}
+                  src={product.image_url || undefined}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
@@ -420,7 +420,7 @@ export function ImageGenerationPage({
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
                           <ImageWithFallback
-                            src={selectedProduct.image_url}
+                            src={selectedProduct.image_url || undefined}
                             alt={selectedProduct.name}
                             className="w-full h-full object-cover"
                           />

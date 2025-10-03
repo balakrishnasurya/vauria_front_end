@@ -2,12 +2,14 @@ import {
   mockOrders, 
   mockProducts, 
   mockUsers, 
-  mockDashboardStats,
-  Order, 
-  ProductMockData as Product, 
-  User, 
-  DashboardStats 
+  mockDashboardStats
 } from '@/data/products.data';
+import { 
+  type Order, 
+  type Product, 
+  type User, 
+  type DashboardStats 
+} from '@/models/interfaces/product.interface';
 
 export interface TopProduct {
   id: string;
@@ -58,26 +60,26 @@ export class DashboardService {
     // Calculate sales data for each product (mock calculation)
     const productSales = mockProducts.map(product => {
       const orders = mockOrders.filter(order => 
-        order.items.some(item => item.productId === product.id)
+        order.items.some(item => item.productId === product.id.toString())
       );
       
       const sales = orders.reduce((total, order) => {
-        const item = order.items.find(item => item.productId === product.id);
+        const item = order.items.find(item => item.productId === product.id.toString());
         return total + (item ? item.quantity : 0);
       }, 0);
 
       const revenue = orders.reduce((total, order) => {
-        const item = order.items.find(item => item.productId === product.id);
+        const item = order.items.find(item => item.productId === product.id.toString());
         return total + (item ? item.price * item.quantity : 0);
       }, 0);
 
       return {
-        id: product.id,
+        id: product.id.toString(),
         name: product.name,
-        category: product.category,
-        sales,
-        revenue,
-        image: product.image
+        category: 'Jewelry', // Default category since Product interface doesn't have category
+        sales: sales,
+        revenue: revenue,
+        image: product.image_url || product.images?.[0] || ''
       };
     });
 
@@ -272,7 +274,7 @@ export class DashboardService {
 
     const newProduct: Product = {
       ...productData,
-      id: `product-${Date.now()}`
+      id: Date.now()
     };
 
     mockProducts.push(newProduct);
@@ -288,7 +290,7 @@ export class DashboardService {
   async updateProduct(productId: string, updates: Partial<Product>): Promise<{ success: boolean; product?: Product; message: string }> {
     await this.delay(500);
 
-    const productIndex = mockProducts.findIndex(product => product.id === productId);
+    const productIndex = mockProducts.findIndex(product => product.id.toString() === productId);
     
     if (productIndex === -1) {
       return {
@@ -310,7 +312,7 @@ export class DashboardService {
   async deleteProduct(productId: string): Promise<{ success: boolean; message: string }> {
     await this.delay(400);
 
-    const productIndex = mockProducts.findIndex(product => product.id === productId);
+    const productIndex = mockProducts.findIndex(product => product.id.toString() === productId);
     
     if (productIndex === -1) {
       return {

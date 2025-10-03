@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, User, MapPin, CreditCard, Settings, Save, RotateCcw, Edit2, Trash2, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, MapPin, CreditCard, Settings, Save, RotateCcw, Edit2, Trash2, Plus, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 import { profileService, type ProfileUpdateData, type PasswordChangeData } from '@/services/profile.service';
-import { type User, type Address, type PaymentMethod } from '@/data/products.data';
+import { type User, type Address, type PaymentMethod } from '@/models/interfaces/product.interface';
 import { toast } from 'sonner';
 
 interface ProfilePageProps {
@@ -293,7 +293,7 @@ export function ProfilePage({
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="profile" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
+                <UserIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">Profile</span>
               </TabsTrigger>
               <TabsTrigger value="addresses" className="flex items-center gap-2">

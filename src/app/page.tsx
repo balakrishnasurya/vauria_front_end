@@ -139,7 +139,7 @@ export default function HomePage( ) {
               transition={{ duration: 0.5 }}
             >
               <img
-                src={banners[currentBanner].imageUrl}
+                src={banners[currentBanner].image}
                 alt={banners[currentBanner].title}
                 className="w-full h-full object-cover"
               />

@@ -63,7 +63,7 @@ export function WishlistPage({
   const removeFromWishlist = async (productId: string) => {
     const response = await wishlistService.removeFromWishlist(productId);
     if (response.success) {
-      setWishlistItems(items => items.filter(item => item.id !== productId));
+      setWishlistItems(items => items.filter(item => item.id.toString() !== productId));
     }
   };
 
@@ -188,7 +188,7 @@ export function WishlistPage({
                       {/* Product Image */}
                       <div className="w-24 h-24 lg:w-32 lg:h-32 flex-shrink-0">
                         <img
-                          src={product.image}
+                          src={product.image_url || undefined}
                           alt={product.name}
                           className="w-full h-full object-cover rounded-lg"
                         />
@@ -227,7 +227,7 @@ export function WishlistPage({
                       {/* Action Buttons */}
                       <div className="flex flex-col gap-2 justify-center">
                         <Button
-                          onClick={() => addToCart(product.id)}
+                          onClick={() => addToCart(product.id.toString())}
                           className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans whitespace-nowrap"
                         >
                           <ShoppingCart className="mr-2 h-4 w-4" />
@@ -237,7 +237,7 @@ export function WishlistPage({
                         
                         <Button
                           variant="outline"
-                          onClick={() => removeFromWishlist(product.id)}
+                          onClick={() => removeFromWishlist(product.id.toString())}
                           className="border-border text-foreground hover:bg-muted font-sans whitespace-nowrap"
                         >
                           <X className="mr-2 h-4 w-4" />

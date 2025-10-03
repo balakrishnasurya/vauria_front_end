@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
 
 /*
@@ -7,9 +8,6 @@
  * Fonts: Playfair Display (Serif for headings), Montserrat (Sans-serif for body)
  * Colors: Royal Blue, Rich Gold, and neutral complementary tones.
  */
-
-/* 1. FONT IMPORTS */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
 /* Unused by this file but might be used by your framework */
 @custom-variant dark (&:is(.dark *));

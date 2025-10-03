@@ -158,7 +158,8 @@ class ProductServiceImpl implements ProductService {
 
   async getProductsByCategory(categoryId: string): Promise<Product[]> {
     await new Promise(resolve => setTimeout(resolve, 600));
-    return mockProducts.filter(p => p.is_active && p.category_id === categoryId);
+    const categoryIdNum = Number(categoryId);
+    return mockProducts.filter(p => p.is_active && p.category_id === categoryIdNum);
   }
 
   async getSimilarProducts(productId: string, categoryId: string): Promise<Product[]> {

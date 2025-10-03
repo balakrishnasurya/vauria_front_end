@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
@@ -33,7 +33,8 @@ interface PaginatedSearchResponse {
   hasPreviousPage: boolean;
 }
 
-export default function SearchPage() {
+// SearchPageContent component that uses useSearchParams
+function SearchPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { handleLogoClick, handleProductClick } = useMainContext();
@@ -381,5 +382,41 @@ export default function SearchPage() {
         )}
       </main>
     </div>
+  );
+}
+
+// Loading component for Suspense fallback
+function SearchPageLoading() {
+  return (
+    <div className="min-h-screen bg-background">
+      <main className="pt-6 pb-12">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-20 h-6 bg-muted animate-pulse rounded"></div>
+          </div>
+          <div className="mb-8 text-center">
+            <div className="w-64 h-8 bg-muted animate-pulse rounded mx-auto mb-4"></div>
+            <div className="w-96 h-4 bg-muted animate-pulse rounded mx-auto"></div>
+          </div>
+          <div className="max-w-2xl mx-auto mb-8">
+            <div className="w-full h-12 bg-muted animate-pulse rounded"></div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="w-full h-80 bg-muted animate-pulse rounded"></div>
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// Main SearchPage component with Suspense boundary
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<SearchPageLoading />}>
+      <SearchPageContent />
+    </Suspense>
   );
 }

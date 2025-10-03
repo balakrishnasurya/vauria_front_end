@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { searchService, type PaginatedSearchResponse } from '@/services/search.service';
 import { cartService } from '@/services/cart.service';
-import { Product } from '@/data/products.data';
+import { type Product } from '@/models/interfaces/product.interface';
 import { Pagination } from './Pagination';
 import { ProductCard } from './ProductCard';
 import { PRODUCT_MESSAGES } from '@/constants/product.messages';
@@ -356,6 +356,8 @@ export function SearchPage({
                         <Pagination
                           currentPage={searchResults.currentPage}
                           totalPages={searchResults.totalPages}
+                          totalItems={searchResults.totalItems}
+                          itemsPerPage={12}
                           onPageChange={handlePageChange}
                         />
                       </motion.div>

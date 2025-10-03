@@ -58,9 +58,8 @@ class SearchServiceImpl implements SearchService {
         
         const searchableText = [
           p.name.toLowerCase(),
-          p.description.toLowerCase(),
-          p.category.toLowerCase(),
-          p.material.toLowerCase(),
+          (p.description || '').toLowerCase(),
+          (p.material || '').toLowerCase(),
           Object.values(p.specifications || {}).join(' ').toLowerCase()
         ].join(' ');
         
@@ -133,32 +132,33 @@ class SearchServiceImpl implements SearchService {
       });
 
       // Check materials
-      const material = product.material.toLowerCase();
-      if (material.includes(searchTerm) && material !== searchTerm) {
-        suggestions.add(material);
+      if (product.material) {
+        const material = product.material.toLowerCase();
+        if (material.includes(searchTerm) && material !== searchTerm) {
+          suggestions.add(material);
+        }
       }
 
-      // Check categories
-      const category = product.category_id.toLowerCase();
-      if (category.includes(searchTerm) && category !== searchTerm) {
-        suggestions.add(category);
+      // Check specifications
+      if (product.specifications) {
+        Object.values(product.specifications).forEach(spec => {
+          const specLower = spec.toLowerCase();
+          if (specLower.includes(searchTerm) && specLower !== searchTerm) {
+            suggestions.add(specLower);
+          }
+        });
       }
 
       // Check tags
-      product.tags.forEach(tag => {
-        const tagLower = tag.toLowerCase();
-        if (tagLower.includes(searchTerm) && tagLower !== searchTerm) {
-          suggestions.add(tagLower);
-        }
-      });
+      if (product.tags) {
+        product.tags.forEach(tag => {
+          const tagLower = tag.toLowerCase();
+          if (tagLower.includes(searchTerm) && tagLower !== searchTerm) {
+            suggestions.add(tagLower);
+          }
+        });
+      }
 
-      // Check specifications
-      Object.values(product.specifications).forEach(spec => {
-        const specLower = spec.toLowerCase();
-        if (specLower.includes(searchTerm) && specLower !== searchTerm && specLower.length > 2) {
-          suggestions.add(specLower);
-        }
-      });
     });
 
     // Convert to array, prioritize exact word matches, and limit results

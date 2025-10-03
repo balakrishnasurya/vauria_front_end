@@ -74,8 +74,8 @@ export function LoginPage({
       const response = await authService.register({
         email: signupForm.email,
         password: signupForm.password,
-        firstName: signupForm.firstName,
-        lastName: signupForm.lastName,
+        first_name: signupForm.firstName,
+        last_name: signupForm.lastName,
       });
       if (response.success && response.user) {
         onLogin(response.user.email);

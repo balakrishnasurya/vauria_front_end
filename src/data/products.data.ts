@@ -1,5 +1,5 @@
 // Import interfaces from the new interfaces folder
-import { Product, Banner, SortOption, FilterOptions, CategoryProducts, User, Order, OrderItem, Address, PaymentMethod, CheckoutData, DashboardStats, GenerationTemplate, ImageGenerationRequest, ImageGenerationResponse, ApiResponse } from '../interfaces/product.interface';
+import { Product, Banner, SortOption, FilterOptions, CategoryProducts, User, Order, OrderItem, Address, PaymentMethod, CheckoutData, DashboardStats, GenerationTemplate, ImageGenerationRequest, ImageGenerationResponse, ApiResponse } from '../models/interfaces/product.interface';
 
 // Interfaces are now imported from the interfaces folder
 
@@ -378,8 +378,10 @@ export const mockRecentlyViewed: Product[] = [
 ];
 
 export const getSimilarProducts = (productId: string, categoryId: string): Product[] => {
+  const numericProductId = parseInt(productId);
+  const numericCategoryId = parseInt(categoryId);
   return mockProducts
-    .filter(p => p.category_id === categoryId && p.id !== productId)
+    .filter(p => p.category_id === numericCategoryId && p.id !== numericProductId)
     .slice(0, 4);
 };
 
@@ -391,34 +393,28 @@ export const mockBanners: Banner[] = [
     id: 'banner-1',
     title: 'Celebrate Your Beauty With Every Ornament',
     subtitle: 'Discover timeless elegance',
-    description: 'Exquisite sapphire jewelry crafted for queens',
-    imageUrl: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/1.JPG?w=1200&h=600&fit=crop',
+    image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/1.JPG?w=1200&h=600&fit=crop',
     ctaText: 'Shop Now',
-    ctaLink: '/category/rings',
-    isActive: true,
-    displayOrder: 1
+    ctaLink: '/products',
+    isActive: true
   },
   {
     id: 'banner-2',
-    title: 'Elegant Jewelry Collection',
-    subtitle: 'Timeless beauty for every occasion',
-    description: 'Discover our exquisite pearl jewelry collection',
-    imageUrl: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/2.JPG?w=1200&h=600&fit=crop',
-    ctaText: 'Shop Now',
-    ctaLink: '/category/earrings',
-    isActive: true,
-    displayOrder: 2
+    title: 'Pearl Collection',
+    subtitle: 'Elegance Redefined',
+    image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/2.JPG?w=1200&h=600&fit=crop',
+    ctaText: 'Explore Collection',
+    ctaLink: '/category/pearls',
+    isActive: true
   },
   {
     id: 'banner-3',
-    title: 'Radiant Collection',
-    subtitle: 'Unleash your inner royalty',
-    description: 'Explore our stunning ruby jewelry pieces',
-    imageUrl: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/3.JPG?w=1200&h=600&fit=crop',
-    ctaText: 'Shop Now',
-    ctaLink: '/category/rings',
-    isActive: true,
-    displayOrder: 3
+    title: 'Ruby Radiance',
+    subtitle: 'Passion in Every Gem',
+    image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/3.JPG?w=1200&h=600&fit=crop',
+    ctaText: 'View Collection',
+    ctaLink: '/category/ruby',
+    isActive: true
   }
 ];
 
@@ -433,24 +429,33 @@ export const mockFilterOptions: FilterOptions = {
     { min: 0, max: 50000, label: 'Under ₹50,000' },
     { min: 50000, max: 100000, label: '₹50,000 - ₹1,00,000' },
     { min: 100000, max: 200000, label: '₹1,00,000 - ₹2,00,000' },
-    { min: 200000, max: null, label: 'Above ₹2,00,000' }
+    { min: 200000, max: 999999999, label: 'Above ₹2,00,000' }
   ]
 };
 
 // Sort options
+export const sortOptions: SortOption[] = [
+  'featured',
+  'price-low-high',
+  'price-high-low',
+  'newest',
+  'popularity',
+  'rating'
+];
+
 export const mockSortOptions: SortOption[] = [
   'featured',
   'price-low-high',
   'price-high-low',
   'newest',
-  'name-a-z',
-  'name-z-a'
+  'popularity',
+  'rating'
 ];
 
 // Mock Users for Dashboard
 export const mockUsers: User[] = [
   {
-    id: 1,
+    id: '1',
     email: 'isabella@example.com',
     firstName: 'Isabella',
     lastName: 'Martinez',
@@ -459,7 +464,7 @@ export const mockUsers: User[] = [
     createdAt: '2023-12-01T00:00:00Z'
   },
   {
-    id: 2,
+    id: '2',
     email: 'admin@vauria.com',
     firstName: 'Admin',
     lastName: 'User',
@@ -472,25 +477,32 @@ export const mockUsers: User[] = [
 // Mock Orders for Dashboard
 export const mockOrders: Order[] = [
   {
-    id: 'ORD-001',
-    userId: 1,
+    id: 'order-001',
+    customerId: '1',
+    customerName: 'Isabella Martinez',
+    customerEmail: 'isabella@example.com',
     items: [
       {
-        productId: 1,
+        productId: '1',
         productName: 'Royal Sapphire Diamond Ring',
+        productImage: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/RINGS.JPG',
         quantity: 1,
         price: 125000
       }
     ],
     total: 125000,
-    status: 'delivered',
-    createdAt: '2024-01-15T10:30:00Z',
+    status: 'completed',
+    createdAt: '2023-12-15T10:30:00Z',
     shippingAddress: {
-      street: '123 Royal Street, Apartment 4B',
+      street: '123 Royal Avenue',
       city: 'Mumbai',
       state: 'Maharashtra',
       pincode: '400001',
-      country: 'India'
+      country: 'India',
+      firstName: 'Isabella',
+      lastName: 'Martinez',
+      phone: '+91 98765 43210',
+      type: 'home'
     }
   }
 ];
@@ -498,7 +510,7 @@ export const mockOrders: Order[] = [
 // Category Products Mapping - Updated to match new categories structure
 export const categoryMockData = {
   categoryProducts: {
-    'necklaces': mockProducts.filter(p => p.category_id === 4 || p.category_id === 'necklaces'),
+    'necklaces': mockProducts.filter(p => p.category_id === 4),
     'traditional-chains': [
       // Traditional chain products
       {
@@ -576,14 +588,14 @@ export const categoryMockData = {
     'mangalsutra': [
       // Mangalsutra products
     ],
-    'earrings': mockProducts.filter(p => p.category_id === 2 || p.category_id === 'earrings'),
+    'earrings': mockProducts.filter(p => p.category_id === 2),
     'bangles': [
       // Bangle products
     ],
-    'bracelets': mockProducts.filter(p => p.category_id === 3 || p.category_id === 'bracelets'),
+    'bracelets': mockProducts.filter(p => p.category_id === 3),
     'rings-anklets-nosepins': [
       // Combined products
-      ...mockProducts.filter(p => p.category_id === 1 || p.category_id === 'rings')
+      ...mockProducts.filter(p => p.category_id === 1)
     ],
     'gift-hamper': [
       // Gift hamper products

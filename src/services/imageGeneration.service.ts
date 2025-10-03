@@ -3,7 +3,7 @@ import {
   type ImageGenerationResponse, 
   type GenerationTemplate,
   type ApiResponse
-} from '@/data/mockData';
+} from '@/models/interfaces/imageGeneration.interface';
 
 class ImageGenerationService {
   private apiKey = 'YOUR_GEMINI_API_KEY_HERE';
@@ -13,37 +13,38 @@ class ImageGenerationService {
    * Generate image using Gemini Imagen API
    * This is a mock implementation for demonstration
    */
-  async generateImage(request: ImageGenerationRequest): Promise<ApiResponse<ImageGenerationResponse>> {
+  async generateImage(request: ImageGenerationRequest): Promise<ImageGenerationResponse> {
     try {
+      // Validate the request
+      if (!request.userImage || !request.productId) {
+        throw new Error('User image and product ID are required');
+      }
+
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Convert user image to URL for mock purposes
+      const userImageUrl = URL.createObjectURL(request.userImage);
+      const productIdStr = request.productId.toString();
 
       // Mock response - in real implementation, this would call the actual Gemini API
       const mockResponse: ImageGenerationResponse = {
         id: `gen_${Date.now()}`,
+        imageUrl: `https://picsum.photos/512/512?random=${Date.now()}`,
         generatedImageUrl: `https://picsum.photos/512/512?random=${Date.now()}`,
-        originalCustomerImage: request.customerImageUrl,
-        originalProductImage: request.productImageUrl,
-        prompt: this.buildPrompt(request),
-        categoryTemplate: request.categoryTemplate,
+        originalCustomerImage: userImageUrl,
+        originalProductImage: `https://picsum.photos/300/300?random=${productIdStr}`,
+        prompt: `Generate a professional jewelry photo showing ${request.category || 'jewelry'} on a person`,
         status: 'completed',
         createdAt: new Date().toISOString(),
         processingTime: 2800
       };
 
-      return {
-        success: true,
-        data: mockResponse,
-        message: 'Image generated successfully'
-      };
+      return mockResponse;
 
     } catch (error) {
       console.error('Image generation failed:', error);
-      return {
-        success: false,
-        message: 'Failed to generate image. Please try again.',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      throw new Error(error instanceof Error ? error.message : 'Failed to generate image');
     }
   }
 
@@ -121,6 +122,7 @@ class ImageGenerationService {
       const mockHistory: ImageGenerationResponse[] = [
         {
           id: 'gen_001',
+          imageUrl: 'https://picsum.photos/512/512?random=1',
           generatedImageUrl: 'https://picsum.photos/512/512?random=1',
           originalCustomerImage: 'https://picsum.photos/400/400?random=customer1',
           originalProductImage: 'https://picsum.photos/300/300?random=ring1',
@@ -139,6 +141,7 @@ class ImageGenerationService {
         },
         {
           id: 'gen_002',
+          imageUrl: 'https://picsum.photos/512/512?random=2',
           generatedImageUrl: 'https://picsum.photos/512/512?random=2',
           originalCustomerImage: 'https://picsum.photos/400/400?random=customer2',
           originalProductImage: 'https://picsum.photos/300/300?random=necklace1',
@@ -178,7 +181,8 @@ class ImageGenerationService {
    */
   private buildPrompt(request: ImageGenerationRequest): string {
     const template = request.categoryTemplate;
-    let prompt = template.basePrompt;
+    const categoryStr = (request.category || 'jewelry').toString();
+    let prompt = template?.basePrompt || `Generate a professional jewelry photo showing ${categoryStr} on a person`;
 
     // Add specific styling based on category
     const styleAdditions = {
@@ -189,7 +193,7 @@ class ImageGenerationService {
       chains: 'Ensure the chain length and positioning look natural and elegant.'
     };
 
-    const categoryKey = template.categorySlug as keyof typeof styleAdditions;
+    const categoryKey = (template?.categorySlug || categoryStr) as keyof typeof styleAdditions;
     if (styleAdditions[categoryKey]) {
       prompt += ' ' + styleAdditions[categoryKey];
     }

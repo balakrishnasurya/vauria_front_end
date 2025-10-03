@@ -119,14 +119,14 @@ export function ProductCard({
           <div className="aspect-square relative overflow-hidden rounded-t-lg">
             {variant === 'featured' ? (
               <motion.img
-                src={product.image_url}
+                src={product.image_url || undefined}
                 alt={product.name}
                 className="w-full h-full object-cover"
                 {...getImageAnimation()}
               />
             ) : (
               <ImageWithFallback
-                src={product.image_url}
+                src={product.image_url || undefined}
                 alt={product.name}
                 className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
               />

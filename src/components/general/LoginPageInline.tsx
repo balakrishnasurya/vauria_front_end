@@ -65,8 +65,8 @@ export function LoginPageInline({ onLogin, onClose }: LoginPageInlineProps) {
       const response = await authService.register({
         email: registerData.email,
         password: registerData.password,
-        firstName: registerData.firstName,
-        lastName: registerData.lastName,
+        first_name: registerData.firstName,
+        last_name: registerData.lastName,
         phone: registerData.phone
       });
 

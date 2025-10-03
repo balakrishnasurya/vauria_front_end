@@ -50,8 +50,17 @@ class WishlistService {
     try {
       await new Promise(resolve => setTimeout(resolve, 200));
 
+      const numericProductId = parseInt(productId, 10);
+      if (isNaN(numericProductId)) {
+        return {
+          data: false,
+          success: false,
+          message: 'Invalid product ID'
+        };
+      }
+
       // Check if item already exists
-      const existingItem = this.wishlistItems.find(item => item.id === productId);
+      const existingItem = this.wishlistItems.find(item => item.id === numericProductId);
       if (existingItem) {
         return {
           data: false,
@@ -61,7 +70,7 @@ class WishlistService {
       }
 
       // Find product in mock data
-      const product = mockProducts.find(p => p.id === productId);
+      const product = mockProducts.find(p => p.id === numericProductId);
       if (!product) {
         return {
           data: false,
@@ -92,8 +101,17 @@ class WishlistService {
     try {
       await new Promise(resolve => setTimeout(resolve, 200));
 
+      const numericProductId = parseInt(productId, 10);
+      if (isNaN(numericProductId)) {
+        return {
+          data: false,
+          success: false,
+          message: 'Invalid product ID'
+        };
+      }
+
       const initialLength = this.wishlistItems.length;
-      this.wishlistItems = this.wishlistItems.filter(item => item.id !== productId);
+      this.wishlistItems = this.wishlistItems.filter(item => item.id !== numericProductId);
 
       if (this.wishlistItems.length === initialLength) {
         return {
@@ -150,7 +168,11 @@ class WishlistService {
    * Check if item is in wishlist
    */
   isInWishlist(productId: string): boolean {
-    return this.wishlistItems.some(item => item.id === productId);
+    const numericProductId = parseInt(productId, 10);
+    if (isNaN(numericProductId)) {
+      return false;
+    }
+    return this.wishlistItems.some(item => item.id === numericProductId);
   }
 
   /**
