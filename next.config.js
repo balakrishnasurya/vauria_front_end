@@ -1,16 +1,12 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  reactStrictMode: true, // recommended
-  swcMinify: true,       // keep SWC minifier
-  experimental: {
-    appDir: true,         // enable app directory (Next 13+)
+/** @type {import('next').NextConfig} */ 
+
+const nextConfig = { 
+  reactStrictMode: true, 
+  experimental: { // Disable LightningCSS (this forces PostCSS fallback) optimizeCss: false, optimizeFonts: false }, swcMinify: false, // Optional: sometimes SWC minifier triggers LightningCSS }; module.exports = nextConfig;
+    optimizeCss: false,
+    optimizeFonts: false
   },
-  images: {
-    domains: ['example.com'], // replace with your domains for <Image>
-  },
-  eslint: {
-    ignoreDuringBuilds: true, // optional: skip eslint during build
-  },
+  swcMinify: false, // Optional: sometimes SWC minifier triggers LightningCSS
 };
 
 module.exports = nextConfig;
