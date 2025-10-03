@@ -454,7 +454,7 @@ export default function ImageGenerationPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
                           <ImageWithFallback
-                            src={selectedProduct.image_url}
+                            src={selectedProduct.image_url || undefined}
                             alt={selectedProduct.name}
                             className="w-full h-full object-cover"
                           />
