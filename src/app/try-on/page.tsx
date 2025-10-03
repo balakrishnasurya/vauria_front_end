@@ -72,12 +72,12 @@ export default function ImageGenerationPage() {
       const [wishlistProducts, cartProducts] = await Promise.all([
         Promise.all((wishlistItems.data || []).slice(0, 6).map(item => 
           productService.getProducts().then(products => 
-            products.find(p => p.id === item.productId || p.id === item.id)
+            products.find(p => p.id === item.id)
           )
         )),
         Promise.all((cartItems.data || []).slice(0, 6).map(item => 
           productService.getProducts().then(products => 
-            products.find(p => p.id === item.productId || p.id === item.id)
+            products.find(p => p.id === item.id)
           )
         ))
       ]);
