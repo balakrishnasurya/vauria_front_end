@@ -13,10 +13,10 @@ import {
   CheckCircle
 } from 'lucide-react';
 
-import { Founder, companyStory as CompanyStoryType } from '../data/about.data';
+import { Founder, companyStory as CompanyStoryType } from '../../data/about.data';
 import { aboutService } from '@/services/about.service';
-import { ABOUT_MESSAGES } from '../constants/about.messages';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import { ABOUT_MESSAGES } from '../../constants/about.messages';
+import { ImageWithFallback } from '@/components/figma/ImageWithFallback';
 
 interface AboutPageProps {
   onBackToHome: () => void;
@@ -28,7 +28,7 @@ export function AboutPage({
   onProfileClick
 }: AboutPageProps) {
   const [founders, setFounders] = useState<Founder[]>([]);
-  const [companyStory, setCompanyStory] = useState<CompanyStoryType | null>(null);
+  const [companyStory, setCompanyStory] = useState<typeof CompanyStoryType | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -195,7 +195,7 @@ export function AboutPage({
                 {ABOUT_MESSAGES.OUR_VALUES}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {companyStory.values.map((value, index) => (
+                {companyStory.values.map((value: { title: string; description: string }, index: number) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, y: 20 }}
@@ -232,7 +232,7 @@ export function AboutPage({
                 {ABOUT_MESSAGES.ACHIEVEMENTS}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
-                {companyStory.achievements.map((achievement, index) => (
+                {companyStory.achievements.map((achievement: string, index: number) => (
                   <motion.div
                     key={index}
                     className="flex items-center gap-3 p-4 bg-muted/30 rounded-lg"
