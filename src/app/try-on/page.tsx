@@ -206,7 +206,7 @@ export default function ImageGenerationPage() {
             <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg">
               <div className="aspect-square overflow-hidden">
                 <ImageWithFallback
-                  src={product.image_url}
+                  src={product.image_url || undefined}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
