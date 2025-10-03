@@ -1,7 +1,9 @@
-// src/app/layout.tsx
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "@/styles/globals.css";
-import MainLayout from '@/components/layout/MainLayout';
+import MainLayout from "@/components/layout/MainLayout"; 
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans", });
 
 export const metadata: Metadata = {
   title: "Vauria Frontend",
@@ -15,7 +17,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className={`${inter.variable} antialiased`}>
+        {/* Render the client-side MainLayout wrapper */}
         <MainLayout>
           {children}
         </MainLayout>
