@@ -25,7 +25,7 @@ import { LoginPageInline } from '@/components/general/LoginPageInline';
 import { useMainContext } from '@/context/MainContext'; 
 
 
-export function HomePage( ) {
+export default function HomePage( ) {
 
   // 🔥 Use the context hook to get state and handlers
   const { 
@@ -456,4 +456,3 @@ export function HomePage( ) {
   );
 }
 
-export default HomePage;
