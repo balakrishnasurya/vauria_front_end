@@ -10,6 +10,13 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
 import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { 
   Search, 
   User, 
   Heart, 
@@ -18,7 +25,9 @@ import {
   MapPin,
   ChevronDown,
   X,
-  Sparkles
+  Sparkles,
+  LogOut,
+  UserCircle
 } from 'lucide-react';
 
 
@@ -249,14 +258,42 @@ export function Header({
           </motion.div>
 
           <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={currentUser ? onProfileClick : onLoginClick} 
-              className="h-10 w-10 hover:bg-accent/50 transition-colors"
-            >
-              <User className="h-5 w-5" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-10 w-10 hover:bg-accent/50 transition-colors"
+                >
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {currentUser ? (
+                  <>
+                    <div className="px-2 py-1.5 text-sm">
+                      <div className="font-medium">{currentUser.name}</div>
+                      <div className="text-muted-foreground text-xs">{currentUser.email}</div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={onProfileClick}>
+                      <UserCircle className="mr-2 h-4 w-4" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onSelect={onLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem onSelect={onLoginClick}>
+                    <User className="mr-2 h-4 w-4" />
+                    Login
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </motion.div>
           
           {/* WISHLIST FUNCTIONALITY - COMMENTED OUT FOR LATER USE
@@ -435,14 +472,42 @@ export function Header({
             </motion.div>
 
             <motion.div whileTap={{ scale: 0.95 }}>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                onClick={currentUser ? onProfileClick : onLoginClick}
-                className="hover:bg-accent/50 transition-colors"
-              >
-                <User className="h-5 w-5" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="hover:bg-accent/50 transition-colors"
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  {currentUser ? (
+                    <>
+                      <div className="px-2 py-1.5 text-sm">
+                        <div className="font-medium">{currentUser.name}</div>
+                        <div className="text-muted-foreground text-xs">{currentUser.email}</div>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={onProfileClick}>
+                        <UserCircle className="mr-2 h-4 w-4" />
+                        Profile
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onSelect={onLogout}>
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout
+                      </DropdownMenuItem>
+                    </>
+                  ) : (
+                    <DropdownMenuItem onSelect={onLoginClick}>
+                      <User className="mr-2 h-4 w-4" />
+                      Login
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </motion.div>
             
             {/* WISHLIST FUNCTIONALITY - COMMENTED OUT FOR LATER USE

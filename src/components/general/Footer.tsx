@@ -14,7 +14,8 @@ import {
   Phone, 
   MapPin,
   Crown,
-  Heart
+  Heart,
+  Linkedin
 } from 'lucide-react';
 const logoImagePath = '/logo.png';
 
@@ -145,7 +146,8 @@ export function Footer({ onAboutClick }: FooterProps) {
                     { icon: Facebook, href: "#" },
                     { icon: Instagram, href: "#" },
                     { icon: Twitter, href: "#" },
-                    { icon: Youtube, href: "#" }
+                    { icon: Youtube, href: "#" },
+                    { icon: Linkedin, href: "https://www.linkedin.com/in/vauria-crafted-for-queens-34a172388/" }
                   ].map((social, index) => (
                     <motion.a
                       key={index}
