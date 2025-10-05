@@ -30,6 +30,11 @@ export class AuthService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  // Handle session expiry - logout and set message
+  async handleSessionExpiry(): Promise<void> {
+    await this.logout(true);
+  }
+
   // Login user (supports both login({ email, password }) and login(email, password))
   async login(email: string, password: string): Promise<AuthResponse>;
   async login(credentials: LoginCredentials): Promise<AuthResponse>;
@@ -163,13 +168,17 @@ export class AuthService {
   }
 
   // Logout user
-  async logout(): Promise<void> {
+  async logout(isSessionExpired: boolean = false): Promise<void> {
     await this.delay(200);
     
     localStorageService.removeItem('vauria_user_token');
     localStorageService.removeItem('vauria_token_type');
     localStorageService.removeItem('vauria_user_email');
     localStorageService.removeItem('vauria_user_id');
+    
+    if (isSessionExpired && typeof window !== 'undefined') {
+      localStorage.setItem('vauria_login_message', 'Your session has expired. Please login again.');
+    }
   }
 
   // Get current user from session (decode JWT if available)

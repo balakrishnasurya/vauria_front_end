@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useRouter, usePathname } from 'next/navigation'; 
 // Import interfaces and services
 import { authService } from '@/services/auth.service';
+import { httpService } from '@/services/http.service';
 import { categoryService } from '@/services/category.service';
 import { Category, CategoryNavItem } from '@/models/interfaces/categories.interface';
 
@@ -110,11 +111,27 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
             }
         };
 
+        // Set up session expiry handler
+        const handleSessionExpiry = async () => {
+            // Update context state
+            setIsAuthenticated(false);
+            setCurrentUser(null);
+            
+            // Handle logout with session expiry flag
+            await authService.handleSessionExpiry();
+            
+            // Redirect to login page
+            router.push('/login');
+        };
+
+        // Set the session expiry callback for http service
+        httpService.setSessionExpiredCallback(handleSessionExpiry);
+
         checkAuthAndLoadCategories();
         
         // Apply dark theme on mount
         document.documentElement.classList.add('dark');
-    }, []);
+    }, [router]);
 
     // --- Auth Handlers ---
     const handleLoginClick = useCallback(() => {
