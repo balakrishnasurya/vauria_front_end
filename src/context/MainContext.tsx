@@ -139,10 +139,20 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
             setIsAuthenticated(true);
             setShowLoginInline(false);
 
-            if (user.role === 'admin') {
+            // Check for redirect destination after login
+            const redirectTo = typeof window !== 'undefined' 
+                ? localStorage.getItem('vauria_redirect_after_login') 
+                : null;
+            
+            if (redirectTo) {
+                // Clear the stored redirect and message
+                localStorage.removeItem('vauria_redirect_after_login');
+                localStorage.removeItem('vauria_login_message');
+                router.push(redirectTo);
+            } else if (user.role === 'admin') {
                 router.push('/dashboard');
             } else {
-                 router.push('/profile');
+                router.push('/profile');
             }
         }
     };
@@ -180,10 +190,32 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
     }, [router]);
     
     const handleWishlistClick = useCallback(() => { router.push('/wishlist'); }, [router]);
-    const handleCartClick = useCallback(() => { router.push('/cart'); }, [router]);
+    const handleCartClick = useCallback(() => { 
+        if (!isAuthenticated) {
+            // Store intended destination and redirect to login
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('vauria_redirect_after_login', '/cart');
+                localStorage.setItem('vauria_login_message', 'Login to access your cart');
+            }
+            router.push('/login');
+        } else {
+            router.push('/cart');
+        }
+    }, [router, isAuthenticated]);
     const handleCheckoutClick = useCallback(() => { router.push('/checkout'); }, [router]);
     const handleProfileClick = useCallback(() => { router.push('/profile'); }, [router]);
-    const handleImageGenerationClick = useCallback(() => { router.push('/try-on'); }, [router]);
+    const handleImageGenerationClick = useCallback(() => { 
+        if (!isAuthenticated) {
+            // Store intended destination and redirect to login
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('vauria_redirect_after_login', '/try-on');
+                localStorage.setItem('vauria_login_message', 'Login to use our try on feature');
+            }
+            router.push('/login');
+        } else {
+            router.push('/try-on');
+        }
+    }, [router, isAuthenticated]);
     const handleAboutClick = useCallback(() => { router.push('/about'); }, [router]);
 
     // ------------------------------------

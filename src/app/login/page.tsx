@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMainContext } from '@/context/MainContext';
 import { motion } from 'motion/react';
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const { handleLogin: handleLoginContext } = useMainContext();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loginMessage, setLoginMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
@@ -29,6 +30,16 @@ export default function LoginPage() {
     phone: '',
     gender: 'male' as 'male' | 'female' | 'other'
   });
+
+  // Check for login message on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const message = localStorage.getItem('vauria_login_message');
+      if (message) {
+        setLoginMessage(message);
+      }
+    }
+  }, []);
 
   // Local helpers
   const goHome = () => router.push('/');
@@ -121,6 +132,15 @@ export default function LoginPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {loginMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-lg"
+                >
+                  <p className="text-primary text-sm font-sans">{loginMessage}</p>
+                </motion.div>
+              )}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}

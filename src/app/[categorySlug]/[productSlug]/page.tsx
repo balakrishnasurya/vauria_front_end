@@ -41,7 +41,11 @@ export default function ProductPage({
   params,
 }: ProductPageProps) {
   const { productSlug } = params;
-  const { handleLogoClick: onBackToHome, handleProductClick: onProductClick } = useMainContext();
+  const { 
+    handleLogoClick: onBackToHome, 
+    handleProductClick: onProductClick,
+    isAuthenticated 
+  } = useMainContext();
   const [product, setProduct] = useState<Product | null>(null);
   const [similarProducts, setSimilarProducts] = useState<
     Product[]
@@ -129,6 +133,16 @@ export default function ProductPage({
   };
 
   const handleAddToCart = async () => {
+    // Check authentication first
+    if (!isAuthenticated) {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('vauria_redirect_after_login', window.location.pathname);
+        localStorage.setItem('vauria_login_message', 'Login to add items to your cart');
+      }
+      window.location.href = '/login';
+      return;
+    }
+
     if (product && product.stock > 0) {
       try {
         const response = await cartService.addToCart(
