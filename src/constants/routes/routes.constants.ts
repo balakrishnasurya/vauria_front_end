@@ -12,6 +12,7 @@ export const BACKEND_ROUTES = {
   CART_ITEM_UPDATE: (itemId: string) => `${BASE_URL}/api/v1/cart/items/${itemId}`,
   USER_ADDRESSES: `${BASE_URL}/api/v1/me/addresses`,
   ORDERS: `${BASE_URL}/api/v1/orders/`,
+  ORDERS_ME: `${BASE_URL}/api/v1/orders/me`,
   ORDERS_COD: `${BASE_URL}/api/v1/orders/cod`,
   ORDERS_ONLINE: `${BASE_URL}/api/v1/orders/online`,
   PAYMENTS_CREATE: `${BASE_URL}/api/v1/payments/create`,

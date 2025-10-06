@@ -6,8 +6,14 @@ import MainLayout from "@/components/layout/MainLayout";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans", });
 
 export const metadata: Metadata = {
-  title: "Vauria Frontend",
+  title: "Vauria",
   description: "Crafted for Queens",
+  icons: {
+    icon: [
+      { url: '/favicon.png' }
+    ],
+  },
+  manifest: '/site.webmanifest',
 };
 
 export default function RootLayout({

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, User as UserIcon, MapPin, CreditCard, Settings, Save, RotateCcw, Edit2, Trash2, Plus, Loader2 } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, MapPin, Package, Settings, Save, RotateCcw, Edit2, Trash2, Plus, Loader2, ChevronDown, ChevronRight, Calendar, Truck, CreditCard as CreditCardIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useMainContext } from '@/context/MainContext';
 
 import { profileService, type ProfileUpdateData, type PasswordChangeData } from '@/services/profile.service';
+import { ordersService, type Order } from '@/services/orders.service';
 import { type User, type Address, type PaymentMethod } from '@/models/interfaces/product.interface';
 import { toast } from 'sonner';
 
@@ -26,6 +27,8 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [editedUser, setEditedUser] = useState<ProfileUpdateData>({});
   const [addresses, setAddresses] = useState<Address[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -78,6 +81,12 @@ export default function ProfilePage() {
       const addressesResponse = await profileService.getUserAddresses();
       if (addressesResponse.success) {
         setAddresses(addressesResponse.data);
+      }
+
+      // Load orders
+      const ordersResponse = await ordersService.getUserOrders();
+      if (ordersResponse.success) {
+        setOrders(ordersResponse.data);
       }
 
       // Load payment methods
@@ -211,6 +220,49 @@ export default function ProfilePage() {
     }
   };
 
+  const handleRequestReturn = async (orderId: string) => {
+    try {
+      const response = await ordersService.requestReturn(orderId, 'User requested return');
+      if (response.success) {
+        // Update the order in the local state
+        setOrders(prev => prev.map(order => 
+          order.id === orderId 
+            ? { ...order, return_request: true }
+            : order
+        ));
+        toast.success('Return request submitted successfully');
+      } else {
+        toast.error(response.message || 'Failed to submit return request');
+      }
+    } catch (error) {
+      toast.error('Failed to submit return request');
+    }
+  };
+
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatCurrency = (amount: string) => {
+    return `₹${parseFloat(amount).toFixed(2)}`;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-IN', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -296,9 +348,9 @@ export default function ProfilePage() {
                 <MapPin className="h-4 w-4" />
                 <span className="hidden sm:inline">Addresses</span>
               </TabsTrigger>
-              <TabsTrigger value="payments" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                <span className="hidden sm:inline">Payments</span>
+              <TabsTrigger value="orders" className="flex items-center gap-2">
+                <Package className="h-4 w-4" />
+                <span className="hidden sm:inline">Orders</span>
               </TabsTrigger>
               <TabsTrigger value="settings" className="flex items-center gap-2">
                 <Settings className="h-4 w-4" />
@@ -648,51 +700,145 @@ export default function ProfilePage() {
               </Card>
             </TabsContent>
 
-            {/* Payment Methods Tab */}
-            <TabsContent value="payments" className="space-y-6">
+            {/* Orders Tab */}
+            <TabsContent value="orders" className="space-y-6">
               <Card className="border-border">
                 <CardHeader>
-                  <CardTitle className="font-serif">Payment Methods</CardTitle>
+                  <CardTitle className="font-serif">Order History</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {paymentMethods.length === 0 ? (
+                  {orders.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">
-                      No payment methods saved yet.
+                      No orders placed yet.
                     </p>
                   ) : (
                     <div className="space-y-4">
-                      {paymentMethods.map((method) => (
-                        <div key={method.id} className="border border-border rounded-lg p-4">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <p className="font-medium">
-                                  {method.type === 'card' && `${method.provider} ${method.cardNumber}`}
-                                  {method.type === 'upi' && `UPI: ${method.upiId}`}
-                                  {method.type === 'cod' && 'Cash on Delivery'}
+                      {orders.map((order) => (
+                        <Card key={order.id} className="border border-border">
+                          <CardContent className="p-6">
+                            {/* Order Header */}
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm">Order #{order.id.slice(0, 8)}</p>
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${ordersService.getStatusColor(order.order_status)}`}>
+                                    {order.order_status}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {formatDate(order.created_at)}
                                 </p>
-                                {method.isDefault && (
-                                  <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                                    Default
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold">{formatCurrency(order.total_amount)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Order Details Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Payment Method</p>
+                                <div className="flex items-center gap-1">
+                                  <CreditCardIcon className="h-3 w-3" />
+                                  <p className="text-sm">{ordersService.formatPaymentMethod(order.payment_method)}</p>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Shipping Method</p>
+                                <div className="flex items-center gap-1">
+                                  <Truck className="h-3 w-3" />
+                                  <p className="text-sm">{ordersService.formatShippingMethod(order.shipping_method)}</p>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Carrier</p>
+                                <p className="text-sm">{order.carrier_name}</p>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-muted-foreground">Delivery Cost</p>
+                                <p className="text-sm">{order.delivery_cost === '0.00' ? 'Free' : formatCurrency(order.delivery_cost)}</p>
+                              </div>
+                            </div>
+
+                            {/* Shipping Address */}
+                            <div className="mb-4">
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Shipping Address</p>
+                              <p className="text-sm bg-muted/30 p-2 rounded text-muted-foreground">
+                                {order.shipping_address}
+                              </p>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex items-center justify-between">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => toggleOrderExpansion(order.id)}
+                                className="gap-2"
+                              >
+                                {expandedOrders.has(order.id) ? (
+                                  <>
+                                    <ChevronDown className="h-4 w-4" />
+                                    Hide Items
+                                  </>
+                                ) : (
+                                  <>
+                                    <ChevronRight className="h-4 w-4" />
+                                    View Items ({order.items.length})
+                                  </>
+                                )}
+                              </Button>
+
+                              <div className="flex gap-2">
+                                {order.order_status.toLowerCase() === 'delivered' && !order.return_request && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRequestReturn(order.id)}
+                                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                                  >
+                                    Request Return
+                                  </Button>
+                                )}
+                                {order.return_request && (
+                                  <span className="px-2 py-1 rounded text-xs bg-orange-100 text-orange-800 border border-orange-200">
+                                    Return Requested
                                   </span>
                                 )}
                               </div>
-                              {method.type === 'card' && (
-                                <p className="text-sm text-muted-foreground">
-                                  Expires {method.expiryMonth}/{method.expiryYear}
-                                </p>
-                              )}
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeletePaymentMethod(method.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+
+                            {/* Expandable Items Section */}
+                            {expandedOrders.has(order.id) && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="mt-4 pt-4 border-t border-border"
+                              >
+                                <p className="text-sm font-medium mb-2">Order Items</p>
+                                <div className="space-y-2">
+                                  {order.items.map((item) => (
+                                    <div key={item.id} className="flex justify-between items-center p-2 bg-muted/20 rounded">
+                                      <div>
+                                        <p className="text-sm">Product ID: {item.product_id}</p>
+                                        <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
+                                      </div>
+                                      <p className="text-sm font-medium">{formatCurrency(item.price)}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+                          </CardContent>
+                        </Card>
                       ))}
                     </div>
                   )}
