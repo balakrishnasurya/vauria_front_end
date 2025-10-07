@@ -18,20 +18,11 @@ import {
   TrendingUp,
   X
 } from 'lucide-react';
-import { productService } from '@/services/product.service';
+import { productService, type PaginatedProductResponse } from '@/services/product.service';
 import { type Product } from '@/models/interfaces/product.interface';
 import { Pagination } from '@/components/general/Pagination';
 import { ProductCard } from '@/components/general/ProductCard';
 import { useMainContext } from '@/context/MainContext';
-
-interface PaginatedSearchResponse {
-  items: Product[];
-  totalItems: number;
-  totalPages: number;
-  currentPage: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
 
 // SearchPageContent component that uses useSearchParams
 function SearchPageContent() {
@@ -42,13 +33,14 @@ function SearchPageContent() {
   const initialQuery = searchParams.get('q') || '';
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   
-  const [searchResults, setSearchResults] = useState<PaginatedSearchResponse>({
+  const [searchResults, setSearchResults] = useState<PaginatedProductResponse>({
     items: [],
-    totalItems: 0,
-    totalPages: 0,
-    currentPage: 1,
-    hasNextPage: false,
-    hasPreviousPage: false
+    page: 1,
+    per_page: 12,
+    total: 0,
+    total_pages: 0,
+    has_next: false,
+    has_prev: false
   });
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -82,24 +74,13 @@ function SearchPageContent() {
     setShowSuggestions(false);
 
     try {
-      // Use productService.getProductsFromApi with search parameter
-      const apiProducts = await productService.getProductsFromApi({ 
-        search: query.trim(),
+      // Use searchProductsFromApi which returns paginated response
+      const apiResponse = await productService.searchProductsFromApi(query.trim(), { 
         per_page: 12,
         page
       });
       
-      // Convert to paginated format
-      const paginatedData: PaginatedSearchResponse = {
-        items: apiProducts,
-        totalItems: apiProducts.length,
-        totalPages: Math.ceil(apiProducts.length / 12),
-        currentPage: page,
-        hasNextPage: apiProducts.length === 12, // Assume more if we got a full page
-        hasPreviousPage: page > 1
-      };
-      
-      setSearchResults(paginatedData);
+      setSearchResults(apiResponse);
       
       // Update search history in localStorage
       const currentHistory = JSON.parse(localStorage.getItem('vauria_search_history') || '[]');
@@ -115,11 +96,12 @@ function SearchPageContent() {
       console.error('Search failed:', error);
       setSearchResults({
         items: [],
-        totalItems: 0,
-        totalPages: 0,
-        currentPage: 1,
-        hasNextPage: false,
-        hasPreviousPage: false
+        page: 1,
+        per_page: 12,
+        total: 0,
+        total_pages: 0,
+        has_next: false,
+        has_prev: false
       });
     } finally {
       setLoading(false);
@@ -328,12 +310,12 @@ function SearchPageContent() {
                 {/* Results Header */}
                 <div className="mb-6">
                   <h2 className="font-serif text-xl font-bold mb-2">
-                    {searchResults.totalItems > 0 
-                      ? `${searchResults.totalItems} results for "${searchQuery}"`
+                    {searchResults.total > 0 
+                      ? `${searchResults.total} results for "${searchQuery}"`
                       : `No results found for "${searchQuery}"`
                     }
                   </h2>
-                  {searchResults.totalItems === 0 && (
+                  {searchResults.total === 0 && (
                     <p className="font-sans text-muted-foreground">
                       Try adjusting your search terms or browse our categories.
                     </p>
@@ -357,7 +339,7 @@ function SearchPageContent() {
                     </div>
 
                     {/* Pagination */}
-                    {searchResults.totalPages > 1 && (
+                    {searchResults.total_pages > 1 && (
                       <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -365,10 +347,10 @@ function SearchPageContent() {
                         className="mt-8 flex justify-center"
                       >
                         <Pagination
-                          currentPage={searchResults.currentPage}
-                          totalPages={searchResults.totalPages}
-                          totalItems={searchResults.totalItems}
-                          itemsPerPage={12}
+                          currentPage={searchResults.page}
+                          totalPages={searchResults.total_pages}
+                          totalItems={searchResults.total}
+                          itemsPerPage={searchResults.per_page}
                           onPageChange={handlePageChange}
                           showItemsInfo={true}
                         />

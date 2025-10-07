@@ -49,8 +49,8 @@ export default function HomePage( ) {
     const loadData = async () => {
       try {
         // Fetch first 8 products from API
-        const products = await productService.getProductsFromApi({ per_page: 8 });
-        setPopularProducts(products);
+        const response = await productService.getProductsFromApi({ per_page: 8 });
+        setPopularProducts(response.items);
         
         const homeCategories = getHomepageCategories();
         setHomepageCategories(homeCategories);

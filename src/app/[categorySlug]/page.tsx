@@ -17,7 +17,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { categoryService, type PaginatedResponse } from '@/services/category.service';
-import { productService } from '@/services/product.service';
+import { productService, type PaginatedProductResponse } from '@/services/product.service';
 import { type Product, type SortOption, type FilterOptions } from '@/models/interfaces/product.interface';
 import { type Category } from '@/models/interfaces/categories.interface';
 import { Pagination } from '@/components/general/Pagination';
@@ -52,13 +52,14 @@ export default function CategoryPage({ params }: CategoryPageProps) {
   const { categorySlug } = params;
   const { handleLogoClick, handleProductClick } = useMainContext();
   const [category, setCategory] = useState<Category | null>(null);
-  const [products, setProducts] = useState<PaginatedResponse<Product>>({
+  const [products, setProducts] = useState<PaginatedProductResponse>({
     items: [],
-    totalItems: 0,
-    totalPages: 0,
-    currentPage: 1,
-    hasNextPage: false,
-    hasPreviousPage: false
+    page: 1,
+    per_page: 12,
+    total: 0,
+    total_pages: 0,
+    has_next: false,
+    has_prev: false
   });
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState<SortOption>('featured');
@@ -100,23 +101,13 @@ export default function CategoryPage({ params }: CategoryPageProps) {
       const categoryId = getCategoryIdFromSlug(categorySlug);
       if (categoryId) {
         try {
-          const apiProducts = await productService.getProductsFromApi({ 
+          const apiResponse = await productService.getProductsFromApi({ 
             category_id: categoryId,
             per_page: 12,
             page: 1
           });
           
-          // Convert to paginated format
-          const paginatedData: PaginatedResponse<Product> = {
-            items: apiProducts,
-            totalItems: apiProducts.length,
-            totalPages: Math.ceil(apiProducts.length / 12),
-            currentPage: 1,
-            hasNextPage: apiProducts.length > 12,
-            hasPreviousPage: false
-          };
-          
-          setProducts(paginatedData);
+          setProducts(apiResponse);
         } catch (error) {
           console.error('Failed to load products from API:', error);
           // Fallback to category service
@@ -128,7 +119,17 @@ export default function CategoryPage({ params }: CategoryPageProps) {
           });
           
           if (productsResponse.success) {
-            setProducts(productsResponse.data);
+            // Convert legacy format to new format
+            const legacyData = productsResponse.data;
+            setProducts({
+              items: legacyData.items,
+              page: legacyData.currentPage,
+              per_page: 12,
+              total: legacyData.totalItems,
+              total_pages: legacyData.totalPages,
+              has_next: legacyData.hasNextPage,
+              has_prev: legacyData.hasPreviousPage
+            });
           }
         }
       } else {
@@ -141,7 +142,17 @@ export default function CategoryPage({ params }: CategoryPageProps) {
         });
         
         if (productsResponse.success) {
-          setProducts(productsResponse.data);
+          // Convert legacy format to new format
+          const legacyData = productsResponse.data;
+          setProducts({
+            items: legacyData.items,
+            page: legacyData.currentPage,
+            per_page: 12,
+            total: legacyData.totalItems,
+            total_pages: legacyData.totalPages,
+            has_next: legacyData.hasNextPage,
+            has_prev: legacyData.hasPreviousPage
+          });
         }
       }
       
@@ -158,48 +169,58 @@ export default function CategoryPage({ params }: CategoryPageProps) {
       
       if (categoryId) {
         try {
-          const apiProducts = await productService.getProductsFromApi({ 
+          const apiResponse = await productService.getProductsFromApi({ 
             category_id: categoryId,
             per_page: 12,
-            page: products.currentPage
+            page: products.page
           });
           
-          // Convert to paginated format
-          const paginatedData: PaginatedResponse<Product> = {
-            items: apiProducts,
-            totalItems: apiProducts.length,
-            totalPages: Math.ceil(apiProducts.length / 12),
-            currentPage: products.currentPage,
-            hasNextPage: apiProducts.length > 12,
-            hasPreviousPage: products.currentPage > 1
-          };
-          
-          setProducts(paginatedData);
+          setProducts(apiResponse);
         } catch (error) {
           console.error('Failed to reload products from API:', error);
           // Fallback to category service
           const response = await categoryService.getCategoryProducts(categorySlug, {
-            page: products.currentPage,
+            page: products.page,
             per_page: 12,
             sortBy,
             filters
           });
           
           if (response.success) {
-            setProducts(response.data);
+            // Convert legacy format to new format
+            const legacyData = response.data;
+            setProducts({
+              items: legacyData.items,
+              page: legacyData.currentPage,
+              per_page: 12,
+              total: legacyData.totalItems,
+              total_pages: legacyData.totalPages,
+              has_next: legacyData.hasNextPage,
+              has_prev: legacyData.hasPreviousPage
+            });
           }
         }
       } else {
         // Fallback to category service
         const response = await categoryService.getCategoryProducts(categorySlug, {
-          page: products.currentPage,
+          page: products.page,
           per_page: 12,
           sortBy,
           filters
         });
         
         if (response.success) {
-          setProducts(response.data);
+          // Convert legacy format to new format
+          const legacyData = response.data;
+          setProducts({
+            items: legacyData.items,
+            page: legacyData.currentPage,
+            per_page: 12,
+            total: legacyData.totalItems,
+            total_pages: legacyData.totalPages,
+            has_next: legacyData.hasNextPage,
+            has_prev: legacyData.hasPreviousPage
+          });
         }
       }
     };
@@ -207,7 +228,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
     if (category) {
       loadProducts();
     }
-  }, [categorySlug, sortBy, filters, category, products.currentPage]);
+  }, [categorySlug, sortBy, filters, category, products.page]);
 
   const handleSortChange = (newSort: SortOption) => {
     setSortBy(newSort);
@@ -218,23 +239,13 @@ export default function CategoryPage({ params }: CategoryPageProps) {
     
     if (categoryId) {
       try {
-        const apiProducts = await productService.getProductsFromApi({ 
+        const apiResponse = await productService.getProductsFromApi({ 
           category_id: categoryId,
           per_page: 12,
           page
         });
         
-        // Convert to paginated format
-        const paginatedData: PaginatedResponse<Product> = {
-          items: apiProducts,
-          totalItems: apiProducts.length,
-          totalPages: Math.ceil(apiProducts.length / 12),
-          currentPage: page,
-          hasNextPage: apiProducts.length > 12,
-          hasPreviousPage: page > 1
-        };
-        
-        setProducts(paginatedData);
+        setProducts(apiResponse);
       } catch (error) {
         console.error('Failed to change page with API:', error);
         // Fallback to category service
@@ -246,7 +257,17 @@ export default function CategoryPage({ params }: CategoryPageProps) {
         });
         
         if (response.success) {
-          setProducts(response.data);
+          // Convert legacy format to new format
+          const legacyData = response.data;
+          setProducts({
+            items: legacyData.items,
+            page: legacyData.currentPage,
+            per_page: 12,
+            total: legacyData.totalItems,
+            total_pages: legacyData.totalPages,
+            has_next: legacyData.hasNextPage,
+            has_prev: legacyData.hasPreviousPage
+          });
         }
       }
     } else {
@@ -259,7 +280,17 @@ export default function CategoryPage({ params }: CategoryPageProps) {
       });
       
       if (response.success) {
-        setProducts(response.data);
+        // Convert legacy format to new format
+        const legacyData = response.data;
+        setProducts({
+          items: legacyData.items,
+          page: legacyData.currentPage,
+          per_page: 12,
+          total: legacyData.totalItems,
+          total_pages: legacyData.totalPages,
+          has_next: legacyData.hasNextPage,
+          has_prev: legacyData.hasPreviousPage
+        });
       }
     }
   };
@@ -371,7 +402,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
         >
           <div className="flex items-center gap-4">
             <span className="font-sans text-muted-foreground">
-              {products.totalItems} {products.totalItems === 1 ? 'product' : 'products'}
+              {products.total} {products.total === 1 ? 'product' : 'products'}
             </span>
           </div>
 
@@ -576,7 +607,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
         )}
 
         {/* Pagination */}
-        {products.totalPages > 1 && (
+        {products.total_pages > 1 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -584,10 +615,10 @@ export default function CategoryPage({ params }: CategoryPageProps) {
             className="mt-8"
           >
             <Pagination
-              currentPage={products.currentPage}
-              totalPages={products.totalPages}
-              totalItems={products.totalItems}
-              itemsPerPage={12}
+              currentPage={products.page}
+              totalPages={products.total_pages}
+              totalItems={products.total}
+              itemsPerPage={products.per_page}
               onPageChange={handlePageChange}
               showItemsInfo={true}
             />

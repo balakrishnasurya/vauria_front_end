@@ -4,8 +4,8 @@ import { BACKEND_ROUTES } from '@/constants/routes/routes.constants';
 import { httpService } from '@/services/http.service';
 
 export interface ProductService {
-  // API-backed
-  getProductsFromApi(params?: ProductQueryParams): Promise<Product[]>;
+  // API-backed with pagination
+  getProductsFromApi(params?: ProductQueryParams): Promise<PaginatedProductResponse>;
   getProductBySlug(slug: string): Promise<Product | null>;
   getProductBySlugFromApi(slug: string): Promise<Product | null>;
   getProducts(): Promise<Product[]>;
@@ -15,6 +15,7 @@ export interface ProductService {
   getRecentlyViewedProducts(): Promise<Product[]>;
   addToRecentlyViewed(productId: number | string): Promise<void>;
   searchProducts(query: string): Promise<Product[]>;
+  searchProductsFromApi(query: string, params?: ProductQueryParams): Promise<PaginatedProductResponse>;
 }
 
 export interface ProductQueryParams {
@@ -25,6 +26,16 @@ export interface ProductQueryParams {
   max_price?: number;
   featured?: boolean;
   search?: string;
+}
+
+export interface PaginatedProductResponse {
+  items: Product[];
+  page: number;
+  per_page: number;
+  total: number;
+  total_pages: number;
+  has_next: boolean;
+  has_prev: boolean;
 }
 
 class ProductServiceImpl implements ProductService {
@@ -83,7 +94,7 @@ class ProductServiceImpl implements ProductService {
     return qs ? `?${qs}` : '';
   }
 
-  async getProductsFromApi(params?: ProductQueryParams): Promise<Product[]> {
+  async getProductsFromApi(params?: ProductQueryParams): Promise<PaginatedProductResponse> {
     try {
       const base = BACKEND_ROUTES.PRODUCTS;
       if (!base) throw new Error('PRODUCTS route not configured');
@@ -91,11 +102,74 @@ class ProductServiceImpl implements ProductService {
       const res = await httpService.get(url);
       if (!res.ok) throw new Error(`Failed to fetch products (${res.status})`);
       const data = await res.json();
-      if (!Array.isArray(data)) throw new Error('Unexpected products response');
-      return data.map((p: any) => this.mapApiProduct(p));
+      
+      // Check if response has pagination metadata (new format)
+      if (data && typeof data === 'object' && Array.isArray(data.items)) {
+        return {
+          items: data.items.map((p: any) => this.mapApiProduct(p)),
+          page: data.page || 1,
+          per_page: data.per_page || 20,
+          total: data.total || 0,
+          total_pages: data.total_pages || 1,
+          has_next: data.has_next || false,
+          has_prev: data.has_prev || false
+        };
+      }
+      
+      // Fallback for old format (array only) - should be removed once API is fully updated
+      if (Array.isArray(data)) {
+        const products = data.map((p: any) => this.mapApiProduct(p));
+        return {
+          items: products,
+          page: params?.page || 1,
+          per_page: params?.per_page || 20,
+          total: products.length,
+          total_pages: 1,
+          has_next: false,
+          has_prev: false
+        };
+      }
+      
+      throw new Error('Unexpected products response format');
     } catch (e) {
+      console.error('Error fetching products from API:', e);
       // Fallback to mock products to keep UI functional
-      return mockProducts.slice(0, params?.per_page ?? 20);
+      const products = mockProducts.slice(0, params?.per_page ?? 20);
+      return {
+        items: products,
+        page: params?.page || 1,
+        per_page: params?.per_page || 20,
+        total: products.length,
+        total_pages: 1,
+        has_next: false,
+        has_prev: false
+      };
+    }
+  }
+
+  async searchProductsFromApi(query: string, params?: ProductQueryParams): Promise<PaginatedProductResponse> {
+    try {
+      const searchParams = { ...params, search: query };
+      return await this.getProductsFromApi(searchParams);
+    } catch (e) {
+      console.error('Error searching products from API:', e);
+      // Fallback to local search
+      const products = await this.searchProducts(query);
+      const page = params?.page || 1;
+      const per_page = params?.per_page || 20;
+      const startIndex = (page - 1) * per_page;
+      const endIndex = startIndex + per_page;
+      const paginatedProducts = products.slice(startIndex, endIndex);
+      
+      return {
+        items: paginatedProducts,
+        page: page,
+        per_page: per_page,
+        total: products.length,
+        total_pages: Math.ceil(products.length / per_page),
+        has_next: endIndex < products.length,
+        has_prev: page > 1
+      };
     }
   }
 

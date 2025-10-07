@@ -76,15 +76,18 @@ export default function ProductPage({
 
         setProduct(productData);
 
-        // Load similar products and recently viewed
-        const [similar, recent] = await Promise.all([
-          productService.getSimilarProducts(
-            String(productData.id),
-            String(productData.category_id),
-          ),
+        // Load similar products from API (4 products from same category) and recently viewed
+        const [similarResponse, recent] = await Promise.all([
+          productService.getProductsFromApi({
+            category_id: productData.category_id || undefined,
+            per_page: 4,
+            page: 1
+          }),
           productService.getRecentlyViewedProducts(),
         ]);
 
+        // Filter out current product from similar products
+        const similar = similarResponse.items.filter(p => p.id !== productData.id).slice(0, 4);
         setSimilarProducts(similar);
         setRecentlyViewed(recent);
       } catch (err) {
@@ -100,15 +103,18 @@ export default function ProductPage({
   
           setProduct(productData);
   
-          // Load similar products and recently viewed
-          const [similar, recent] = await Promise.all([
-            productService.getSimilarProducts(
-              String(productData.id),
-              String(productData.category_id),
-            ),
+          // Load similar products from API (4 products from same category) and recently viewed
+          const [similarResponse, recent] = await Promise.all([
+            productService.getProductsFromApi({
+              category_id: productData.category_id || undefined,
+              per_page: 4,
+              page: 1
+            }),
             productService.getRecentlyViewedProducts(),
           ]);
   
+          // Filter out current product from similar products
+          const similar = similarResponse.items.filter(p => p.id !== productData.id).slice(0, 4);
           setSimilarProducts(similar);
           setRecentlyViewed(recent);
         } catch (fallbackErr) {
@@ -648,6 +654,8 @@ export default function ProductPage({
                       {product.weight ? `${product.weight}g` : 'Light weight'}
                     </p>
                   </div>
+                  {/* Stock display hidden as requested */}
+                  {/*
                   <div className="space-y-1">
                     <span className="font-sans text-sm text-muted-foreground">
                       Stock
@@ -656,6 +664,7 @@ export default function ProductPage({
                       {product.stock} pieces
                     </p>
                   </div>
+                  */}
                 </div>
               </div>
 
@@ -718,7 +727,9 @@ export default function ProductPage({
               </div>
 
               {/* Trust Badges */}
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
+              <div className="grid grid-cols-1 gap-4 pt-4 border-t border-border">
+                {/* Commented out as requested */}
+                {/*
                 <div className="text-center space-y-2">
                   <Shield className="h-6 w-6 mx-auto text-primary" />
                   <p className="font-sans text-xs text-muted-foreground">
@@ -731,10 +742,11 @@ export default function ProductPage({
                     Free Shipping
                   </p>
                 </div>
+                */}
                 <div className="text-center space-y-2">
                   <RefreshCw className="h-6 w-6 mx-auto text-primary" />
                   <p className="font-sans text-xs text-muted-foreground">
-                    30-Day Returns
+                    7-Day Returns
                   </p>
                 </div>
               </div>
