@@ -14,10 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 
 import { cartService, type CartSummary } from '@/services/cart.service';
-import { checkoutService, type ShippingCalculation, type OrderSummary, type Discount } from '@/services/checkout.service';
+import { checkoutService, type ShippingCalculation, type ShippingRate, type OrderSummary, type Discount } from '@/services/checkout.service';
 import { profileService } from '@/services/profile.service';
 import { ordersService } from '@/services/orders.service';
+import { paymentService } from '@/services/payment.service';
 import { type Address, type PaymentMethod, type CheckoutData } from '@/models/interfaces/product.interface';
+import { type CreateOrderRequest } from '@/services/orders.service';
 import { toast } from 'sonner';
 import { useMainContext } from '@/context/MainContext';
 
@@ -55,8 +57,9 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
-  const [shippingOptions, setShippingOptions] = useState<ShippingCalculation | null>(null);
-    const [selectedShipping, setSelectedShipping] = useState<'standard' | 'express'>('standard');
+  const [shippingOptions, setShippingOptions] = useState<ShippingRate[]>([]);
+  const [selectedShipping, setSelectedShipping] = useState<ShippingRate | null>(null);
+  const [loadingShipping, setLoadingShipping] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<'cod' | 'online'>('cod');
   const [isGift, setIsGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
@@ -105,7 +108,7 @@ export default function CheckoutPage() {
     if (selectedAddress) {
       calculateShipping();
     }
-  }, [selectedAddress]);
+  }, [selectedAddress, selectedPayment]); // Add selectedPayment dependency
 
   const loadCheckoutData = async () => {
     setLoading(true);
@@ -136,15 +139,68 @@ export default function CheckoutPage() {
   };
 
   const calculateShipping = async () => {
-    if (!selectedAddress) return;
+    if (!selectedAddress || !cartSummary) return;
 
+    setLoadingShipping(true);
     try {
-      const response = await checkoutService.calculateShipping(selectedAddress);
-      if (response.success) {
+      // Extract address ID (assuming it exists on the address object)
+      // If address doesn't have an ID, we'll need to create one or use a fallback
+      const addressId = selectedAddress.id ? parseInt(selectedAddress.id.replace('addr-', '')) : 1;
+      
+      // Calculate total weight (assuming 0.5kg per item as default)
+      const totalWeight = cartSummary.items.reduce((total, item) => total + (item.quantity * 0.5), 0);
+      
+      // Use cart subtotal with offer prices
+      const totalAmount = cartSummary.items.reduce((total, item) => 
+        total + ((item.offer_price || item.price) * item.quantity), 0
+      );
+      
+      // Determine payment method
+      const paymentMethod = selectedPayment === 'online' ? 'online' : 'cod';
+      
+      const response = await checkoutService.getShippingRates(
+        addressId,
+        totalWeight,
+        totalAmount,
+        paymentMethod
+      );
+      
+      if (response.success && response.data.length > 0) {
         setShippingOptions(response.data);
+        // Auto-select the cheapest option
+        const cheapestOption = response.data.reduce((prev, current) => 
+          prev.rate < current.rate ? prev : current
+        );
+        setSelectedShipping(cheapestOption);
+      } else {
+        toast.error(response.message || 'No shipping options available');
+        // Fallback to old calculation method
+        const fallbackResponse = await checkoutService.calculateShipping(selectedAddress);
+        if (fallbackResponse.success) {
+          // Convert old format to new format
+          const fallbackOptions: ShippingRate[] = [
+            {
+              courier_id: 1,
+              courier_name: 'Standard Delivery',
+              rate: fallbackResponse.data.standard.cost,
+              etd: fallbackResponse.data.standard.days
+            },
+            {
+              courier_id: 2,
+              courier_name: 'Express Delivery',
+              rate: fallbackResponse.data.express.cost,
+              etd: fallbackResponse.data.express.days
+            }
+          ];
+          setShippingOptions(fallbackOptions);
+          setSelectedShipping(fallbackOptions[0]);
+        }
       }
     } catch (error) {
+      console.error('Shipping calculation error:', error);
       toast.error('Failed to calculate shipping');
+    } finally {
+      setLoadingShipping(false);
     }
   };
 
@@ -233,58 +289,77 @@ export default function CheckoutPage() {
   };
 
   const calculateOrderSummary = (): OrderSummary => {
-    if (!cartSummary || !shippingOptions) {
+    if (!cartSummary || !selectedShipping) {
       return {
         subtotal: 0,
         shipping: 0,
         tax: 0,
         discount: 0,
         total: 0,
-        shippingMethod: selectedShipping
+        shippingMethod: 'standard'
       };
     }
 
-    const shipping = ordersService.getDeliveryCost(selectedShipping);
+    // Calculate subtotal using offer prices
+    const subtotalWithOfferPrices = cartSummary.items.reduce((total, item) => 
+      total + ((item.offer_price || item.price) * item.quantity), 0
+    );
+
+    const shipping = selectedShipping.rate;
     
-    // Calculate discount amount
+    // Calculate online payment discount (5% off subtotal)
+    const onlinePaymentDiscount = selectedPayment === 'online' 
+      ? subtotalWithOfferPrices * 0.05
+      : 0;
+    
+    // Calculate discount amount from discount codes
     let discountAmount = 0;
     if (appliedDiscount) {
       if (appliedDiscount.type === 'fixed') {
         discountAmount = appliedDiscount.value;
       } else if (appliedDiscount.type === 'percentage') {
-        discountAmount = (appliedDiscount.value / 100) * cartSummary.subtotal;
+        discountAmount = (appliedDiscount.value / 100) * subtotalWithOfferPrices;
       }
       // Ensure discount doesn't exceed subtotal
-      discountAmount = Math.min(discountAmount, cartSummary.subtotal);
+      discountAmount = Math.min(discountAmount, subtotalWithOfferPrices);
     }
     
-    const total = cartSummary.subtotal + shipping + cartSummary.tax - discountAmount;
+    const total = subtotalWithOfferPrices + shipping - onlinePaymentDiscount - discountAmount;
 
     return {
-      subtotal: cartSummary.subtotal,
+      subtotal: subtotalWithOfferPrices,
       shipping,
-      tax: cartSummary.tax,
-      discount: 0,
+      tax: 0, // Tax removed as requested
+      discount: discountAmount,
       total,
-      shippingMethod: selectedShipping
+      shippingMethod: 'standard' // Keep for compatibility
     };
   };
 
   const handlePlaceOrder = async () => {
-    if (!selectedAddress || !cartSummary) {
+    if (!selectedAddress || !cartSummary || !selectedShipping) {
       toast.error('Please complete all required fields');
       return;
     }
 
     setProcessing(true);
     try {
-      // Prepare order data using the orders service
-      const orderData = ordersService.prepareOrderData(
-        selectedAddress,
-        selectedShipping,
-        'COD', // payment method
-        deliveryInstructions // order notes
-      );
+      // Extract address ID for shipping_address_id
+      const addressId = selectedAddress.id ? parseInt(selectedAddress.id.replace('addr-', '')) : 1;
+      
+      // Prepare order data with shipping rate information
+      const orderData: CreateOrderRequest = {
+        shipping_address_id: addressId,
+        shipping_address: `${selectedAddress.firstName} ${selectedAddress.lastName}, ${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.pincode}, ${selectedAddress.country}`,
+        billing_address: `${selectedAddress.firstName} ${selectedAddress.lastName}, ${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.pincode}, ${selectedAddress.country}`,
+        payment_method: 'COD',
+        shipping_method: selectedShipping.courier_name,
+        carrier_name: selectedShipping.courier_name,
+        delivery_option: selectedShipping.courier_name,
+        order_notes: deliveryInstructions || '',
+        delivery_cost: selectedShipping.rate,
+        ...(appliedDiscount && { discount_code: appliedDiscount.code })
+      };
 
       // Create COD order
       const response = await ordersService.createCODOrder(orderData);
@@ -308,29 +383,38 @@ export default function CheckoutPage() {
   };
 
   const handleOnlinePayment = async () => {
-    if (!selectedAddress || !cartSummary) {
+    if (!selectedAddress || !cartSummary || !selectedShipping) {
       toast.error('Please complete all required fields');
       return;
     }
 
     setProcessing(true);
     try {
-      // Prepare order data for online payment
-      const orderData = ordersService.prepareOrderData(
-        selectedAddress,
-        selectedShipping,
-        'online', // payment method
-        deliveryInstructions // order notes
-      );
+      // Extract address ID for shipping_address_id
+      const addressId = selectedAddress.id ? parseInt(selectedAddress.id.replace('addr-', '')) : 1;
+      
+      // Prepare order data with shipping rate information
+      const orderData: CreateOrderRequest = {
+        shipping_address_id: addressId,
+        shipping_address: `${selectedAddress.firstName} ${selectedAddress.lastName}, ${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.pincode}, ${selectedAddress.country}`,
+        billing_address: `${selectedAddress.firstName} ${selectedAddress.lastName}, ${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.pincode}, ${selectedAddress.country}`,
+        payment_method: 'online',
+        shipping_method: selectedShipping.courier_name,
+        carrier_name: selectedShipping.courier_name,
+        delivery_option: selectedShipping.courier_name,
+        order_notes: deliveryInstructions || '',
+        delivery_cost: selectedShipping.rate,
+        ...(appliedDiscount && { discount_code: appliedDiscount.code })
+      };
 
       // Create online order and generate payment credentials
-      const result = await ordersService.createOnlineOrderWithPayment(orderData);
+      const result = await paymentService.createOnlineOrderWithPayment(orderData, ordersService);
 
       if (result.order.success && result.payment?.success) {
         toast.success('Order created! Opening payment gateway...');
         
         // Get the stored payment credentials
-        const credentials = ordersService.getStoredPaymentCredentials();
+        const credentials = paymentService.getStoredPaymentCredentials();
         
         if (credentials) {
           // Load Razorpay script and open payment
@@ -373,7 +457,7 @@ export default function CheckoutPage() {
       },
       handler: async function (response: any) {
         // Store payment response
-        ordersService.storePaymentResult(response);
+        paymentService.storePaymentResult(response);
         
         // Store payment details in component state for display
         setPaymentDetails({
@@ -393,7 +477,9 @@ export default function CheckoutPage() {
             razorpay_signature: response.razorpay_signature
           };
           
-          const verificationResult = await ordersService.verifyPayment(verificationData);
+          const verificationResult = await paymentService.verifyPayment(verificationData);
+          
+          console.log('Payment verification result:', verificationResult);
           
           if (verificationResult.success && verificationResult.data.verified) {
             toast.success('Payment verified successfully!');
@@ -403,10 +489,10 @@ export default function CheckoutPage() {
               timestamp: new Date().toISOString()
             });
           } else {
-            //toast.error('Payment verification failed');
+            console.log('Payment verification failed:', verificationResult.data);
             setVerificationDetails({
               verified: false,
-              message: verificationResult.data.message || 'Payment verification ',
+              message: verificationResult.data.message || 'Payment verification failed',
               timestamp: new Date().toISOString()
             });
           }
@@ -425,7 +511,7 @@ export default function CheckoutPage() {
         setOrderComplete(true);
         
         // Clear payment credentials after successful payment
-        //ordersService.clearStoredPaymentCredentials();
+        paymentService.clearStoredPaymentCredentials();
         
         // Payment verification is now handled above
       },
@@ -445,7 +531,7 @@ export default function CheckoutPage() {
   };
 
   const handleNextStep = () => {
-    if (currentStep === 'shipping' && selectedAddress && shippingOptions) {
+    if (currentStep === 'shipping' && selectedAddress && selectedShipping) {
       setCurrentStep('payment');
     } else if (currentStep === 'payment' && selectedPaymentMethod) {
       setCurrentStep('review');
@@ -465,7 +551,7 @@ export default function CheckoutPage() {
       style: 'currency',
       currency: 'INR',
       minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      maximumFractionDigits: 2,
     }).format(price);
   };
 
@@ -597,7 +683,7 @@ export default function CheckoutPage() {
   }
 
   const orderSummary = calculateOrderSummary();
-  const canProceedToPayment = currentStep === 'shipping' && selectedAddress && shippingOptions;
+  const canProceedToPayment = currentStep === 'shipping' && selectedAddress && selectedShipping;
   const canProceedToReview = currentStep === 'payment' && selectedPaymentMethod;
 
   return (
@@ -902,36 +988,8 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {/* Shipping Options */}
-                    {shippingOptions && selectedAddress && (
-                      <div className="pt-6 border-t border-border">
-                        <h3 className="font-serif text-lg font-medium mb-4 flex items-center gap-2">
-                          <Truck className="h-5 w-5" />
-                          Shipping Options
-                        </h3>
-                        <RadioGroup value={selectedShipping} onValueChange={(value: 'standard' | 'express' ) => setSelectedShipping(value)}>
-                          <div className="space-y-3">
-                            {Object.entries(shippingOptions).map(([key, option]) => (
-                              <div key={key} className="flex items-center space-x-3">
-                                <RadioGroupItem value={key} id={key} />
-                                <Label htmlFor={key} className="flex-1 cursor-pointer">
-                                  <div className="flex justify-between items-center p-3 border border-border rounded-lg hover:bg-muted/20 transition-colors">
-                                    <div>
-                                      <p className="font-medium font-sans capitalize">{key} Delivery</p>
-                                      <p className="text-sm text-muted-foreground font-sans">{option.days}</p>
-                                    </div>
-                                    <p className="font-semibold font-sans">{formatPrice(option.cost)}</p>
-                                  </div>
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    )}
-
                     {/* Payment Options */}
-                    {shippingOptions && selectedAddress && (
+                    {selectedAddress && (
                       <div className="pt-6 border-t border-border">
                         <h3 className="font-serif text-lg font-medium mb-4 flex items-center gap-2">
                           <CreditCard className="h-5 w-5" />
@@ -963,6 +1021,72 @@ export default function CheckoutPage() {
                             </div>
                           </div>
                         </RadioGroup>
+                        <p className="text-sm text-primary font-medium mt-3 flex items-center gap-1">
+                          💰 Pay online to get 5% off on your order!
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Shipping Options */}
+                    {shippingOptions.length > 0 && selectedAddress && (
+                      <div className="pt-6 border-t border-border">
+                        <h3 className="font-serif text-lg font-medium mb-4 flex items-center gap-2">
+                          <Truck className="h-5 w-5" />
+                          Shipping Options
+                          {loadingShipping && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+                        </h3>
+                        {loadingShipping ? (
+                          <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="p-3 border border-border rounded-lg animate-pulse">
+                                <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
+                                <div className="h-3 bg-muted rounded w-1/2"></div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <RadioGroup 
+                            value={selectedShipping?.courier_id.toString()} 
+                            onValueChange={(value) => {
+                              const option = shippingOptions.find(opt => opt.courier_id.toString() === value);
+                              if (option) setSelectedShipping(option);
+                            }}
+                          >
+                            <div className="space-y-3">
+                              {shippingOptions.map((option) => (
+                                <div key={option.courier_id} className="flex items-center space-x-3">
+                                  <RadioGroupItem value={option.courier_id.toString()} id={option.courier_id.toString()} />
+                                  <Label htmlFor={option.courier_id.toString()} className="flex-1 cursor-pointer">
+                                    <div className="flex justify-between items-center p-3 border border-border rounded-lg hover:bg-muted/20 transition-colors">
+                                      <div>
+                                        <p className="font-medium font-sans">{option.courier_name}</p>
+                                        <p className="text-sm text-muted-foreground font-sans">Expected delivery: {option.etd}</p>
+                                      </div>
+                                      <p className="font-semibold font-sans">{formatPrice(option.rate)}</p>
+                                    </div>
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+                          </RadioGroup>
+                        )}
+                      </div>
+                    )}
+
+                    {shippingOptions.length === 0 && selectedAddress && !loadingShipping && (
+                      <div className="pt-6 border-t border-border">
+                        <div className="text-center py-8">
+                          <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                          <p className="text-muted-foreground">No shipping options available for this address</p>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-3"
+                            onClick={calculateShipping}
+                          >
+                            Retry
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -1214,7 +1338,7 @@ export default function CheckoutPage() {
                     <div>
                       <h4 className="font-medium font-sans mb-2">Shipping Method</h4>
                       <div className="text-sm text-muted-foreground font-sans capitalize">
-                        {selectedShipping} Delivery - {shippingOptions?.[selectedShipping]?.days}
+                        {selectedShipping?.courier_name} - {selectedShipping?.etd}
                       </div>
                     </div>
                   </CardContent>
@@ -1237,18 +1361,33 @@ export default function CheckoutPage() {
                       <div className="space-y-2 font-sans">
                         <div className="flex justify-between">
                           <span>Subtotal ({cartSummary.itemCount} items)</span>
-                          <span>{formatPrice(cartSummary.subtotal)}</span>
+                          <span>
+                            {formatPrice(
+                              cartSummary.items.reduce((total, item) => 
+                                total + ((item.offer_price || item.price) * item.quantity), 0
+                              )
+                            )}
+                          </span>
                         </div>
-                        {shippingOptions && (
+                        {selectedShipping && (
                           <div className="flex justify-between">
                             <span>Shipping</span>
-                            <span>{formatPrice(shippingOptions[selectedShipping].cost)}</span>
+                            <span>{formatPrice(selectedShipping.rate)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between">
-                          <span>Tax</span>
-                          <span>{formatPrice(cartSummary.tax)}</span>
-                        </div>
+                        {/* Online Payment Discount */}
+                        {selectedPayment === 'online' && (
+                          <div className="flex justify-between text-green-600 font-medium">
+                            <span>Online Payment Discount (5% off)</span>
+                            <span>
+                              -{formatPrice(
+                                cartSummary.items.reduce((total, item) => 
+                                  total + ((item.offer_price || item.price) * item.quantity), 0
+                                ) * 0.05
+                              )}
+                            </span>
+                          </div>
+                        )}
                         {orderSummary.discount > 0 && (
                           <div className="flex justify-between text-green-600 font-medium">
                             <span>Discount</span>
@@ -1381,13 +1520,9 @@ export default function CheckoutPage() {
                   </div>
                   
                   <div className="text-xs text-muted-foreground font-sans pt-4 border-t border-border">
-                    <p className="flex items-center gap-1 mb-1">
-                      <CheckCircle className="h-3 w-3" />
-                      Secure payment with 256-bit SSL encryption
-                    </p>
                     <p className="flex items-center gap-1">
                       <CheckCircle className="h-3 w-3" />
-                      Free returns within 30 days
+                      Free returns within 7 days
                     </p>
                   </div>
                 </CardContent>

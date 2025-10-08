@@ -291,7 +291,7 @@ export default function CartPage() {
                             {/* Subtotal for this item */}
                             <div className="mt-2 text-right sm:text-left">
                               <span className="font-sans text-sm text-muted-foreground">
-                                Subtotal: {formatPrice(item.price * item.quantity)}
+                                Subtotal: {formatPrice((item.offer_price || item.price) * item.quantity)}
                               </span>
                             </div>
                           </div>
@@ -317,8 +317,16 @@ export default function CartPage() {
                   <div className="space-y-3 mb-4">
                     <div className="flex justify-between font-sans">
                       <span className="text-muted-foreground">Subtotal</span>
-                      <span className="text-foreground">{formatPrice(cartSummary.subtotal)}</span>
+                      <span className="text-foreground">
+                        {formatPrice(
+                          cartSummary.items.reduce((total, item) => 
+                            total + ((item.offer_price || item.price) * item.quantity), 0
+                          )
+                        )}
+                      </span>
                     </div>
+                    {/* Commented out as requested */}
+                    {/*
                     <div className="flex justify-between font-sans">
                       <span className="text-muted-foreground">Shipping</span>
                       <span className="text-foreground">
@@ -334,10 +342,17 @@ export default function CartPage() {
                         🎉 You've qualified for free shipping!
                       </p>
                     )}
+                    */}
                     <div className="border-t border-border pt-3">
                       <div className="flex justify-between font-serif font-bold text-lg">
                         <span>Total</span>
-                        <span>{formatPrice(cartSummary.total)}</span>
+                        <span>
+                          {formatPrice(
+                            cartSummary.items.reduce((total, item) => 
+                              total + ((item.offer_price || item.price) * item.quantity), 0
+                            )
+                          )}
+                        </span>
                       </div>
                     </div>
                   </div>

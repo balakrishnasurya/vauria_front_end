@@ -17,4 +17,5 @@ export const BACKEND_ROUTES = {
   ORDERS_ONLINE: `${BASE_URL}/api/v1/orders/online`,
   PAYMENTS_CREATE: `${BASE_URL}/api/v1/payments/create`,
   PAYMENTS_VERIFY: `${BASE_URL}/api/v1/payments/verify`,
+  SHIPPING_RATES: `${BASE_URL}/api/v1/orders/shipping/rates`,
 };

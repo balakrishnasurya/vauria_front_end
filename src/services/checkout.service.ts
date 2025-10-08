@@ -1,6 +1,8 @@
 import { mockUsers } from '@/data/products.data';
 import { type Address, type PaymentMethod, type CheckoutData, type User } from '@/models/interfaces/product.interface';
 import { MESSAGES } from '@/constants/messages.constants';
+import { BACKEND_ROUTES } from '@/constants/routes/routes.constants';
+import { httpService } from './http.service';
 
 export interface CheckoutServiceResponse<T> {
   data: T;
@@ -11,6 +13,20 @@ export interface CheckoutServiceResponse<T> {
 export interface ShippingCalculation {
   standard: { cost: number; days: string; };
   express: { cost: number; days: string; };
+}
+
+export interface ShippingRate {
+  courier_id: number;
+  courier_name: string;
+  rate: number;
+  etd: string;
+}
+
+export interface ShippingRatesRequest {
+  address_id: number;
+  total_weight: number;
+  total_amount: number;
+  payment_method: string;
 }
 
 export interface OrderSummary {
@@ -245,7 +261,61 @@ class CheckoutService {
   }
 
   /**
-   * Calculate shipping options
+   * Get real-time shipping rates from API
+   */
+  async getShippingRates(
+    addressId: number, 
+    totalWeight: number, 
+    totalAmount: number, 
+    paymentMethod: string
+  ): Promise<CheckoutServiceResponse<ShippingRate[]>> {
+    try {
+      const requestBody = {
+        address_id: addressId,
+        total_weight: totalWeight,
+        total_amount: totalAmount,
+        payment_method: paymentMethod
+      };
+
+      const response = await httpService.post(BACKEND_ROUTES.SHIPPING_RATES, requestBody);
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to fetch shipping rates';
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          }
+        } catch (parseError) {
+          console.error('Error parsing shipping rates API error response:', parseError);
+        }
+        
+        return {
+          data: [],
+          success: false,
+          message: errorMessage
+        };
+      }
+
+      const shippingRates: ShippingRate[] = await response.json();
+      
+      return {
+        data: shippingRates,
+        success: true,
+        message: 'Shipping rates fetched successfully'
+      };
+    } catch (error) {
+      console.error('Error fetching shipping rates:', error);
+      return {
+        data: [],
+        success: false,
+        message: 'Failed to fetch shipping rates. Please check your connection and try again.'
+      };
+    }
+  }
+
+  /**
+   * Calculate shipping options (fallback method for backward compatibility)
    */
   async calculateShipping(address: Address): Promise<CheckoutServiceResponse<ShippingCalculation>> {
     try {
