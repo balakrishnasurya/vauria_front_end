@@ -28,7 +28,7 @@ export const mockCategories: Category[] = [
     name: 'Casual Chains',
     slug: 'casual-chains',
     description: 'Modern casual chains for everyday elegance',
-    image: 'https://images.unsplash.com/photo-1708220040954-a89dd8317a9e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXN1YWwlMjBtb2Rlcm4lMjBnb2xkJTIwY2hhaW4lMjBqZXdlbHJ5JTIwbWluaW1hbHxlbnwxfHx8fDE3NTkxMjA1Nzl8MA&ixlib=rb-4.1.0&q=80&w=1080',
+    image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/Casual%20Chains/Causal%20Chains%20Banner.JPG?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjYXN1YWwlMjBtb2Rlcm4lMjBnb2xkJTIwY2hhaW4lMjBqZXdlbHJ5JTIwbWluaW1hbHxlbnwxfHx8fDE3NTkxMjA1Nzl8MA&ixlib=rb-4.1.0&q=80&w=1080',
     is_active: true,
     sort_order: 3,
     parent_id: null,

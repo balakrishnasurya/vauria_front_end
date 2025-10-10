@@ -1,6 +1,4 @@
-import { mockUsers } from '@/data/products.data';
 import type { User, Address, PaymentMethod } from '@/models/interfaces/product.interface';
-import { MESSAGES } from '../constants/messages.constants';
 import { authService } from '@/services/auth.service';
 import { localStorageService } from '@/services/localStorage.service';
 import { httpService } from '@/services/http.service';
@@ -31,81 +29,102 @@ export interface PasswordChangeData {
   confirmPassword: string;
 }
 
-class ProfileService {
-  private async resolveAuthUser(): Promise<{ authUser: User | null; id: string | null; email: string | null }> {
-    try {
-      const authUser = await authService.getCurrentUser();
-      const id = authUser?.id ?? localStorageService.getItem('vauria_user_id');
-      const email = authUser?.email ?? localStorageService.getItem('vauria_user_email');
-      return { authUser: authUser ?? null, id: id ?? null, email: email ?? null };
-    } catch {
-      const id = localStorageService.getItem('vauria_user_id');
-      const email = localStorageService.getItem('vauria_user_email');
-      return { authUser: null, id: id ?? null, email: email ?? null };
-    }
-  }
+// API Response interfaces
+export interface ApiUserProfile {
+  id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  role: string;
+  is_verified: boolean;
+  gender: string | null;
+  addresses: ApiAddress[];
+  razorpay_customer_id: string | null;
+}
 
-  private findMockUserIndex(id: string | null, email: string | null): number {
-    return mockUsers.findIndex(u => {
-      const uid = (u.id as any)?.toString?.() ?? String(u.id);
-      return (id && uid === id.toString()) || (email && u.email === email);
-    });
-  }
+export interface ApiAddress {
+  id: number;
+  user_id: number;
+  first_name: string;
+  last_name: string | null;
+  phone_number: string;
+  address_type: string;
+  is_default: boolean;
+  address_line_1: string;
+  address_line_2: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+}
+
+class ProfileService {
 
   /**
-   * Get current user profile
+   * Get current user profile from API
    */
   async getCurrentProfile(): Promise<ProfileServiceResponse<User>> {
     try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-
-      const { authUser, id, email } = await this.resolveAuthUser();
-      if (!id && !email) {
-        return {
-          data: {} as User,
-          success: false,
-          message: MESSAGES.AUTH.ERROR.USER_NOT_FOUND
-        };
+      // Try to get profile from API first
+      try {
+        const response = await httpService.get(BACKEND_ROUTES.USER_PROFILE);
+        
+        if (response.ok) {
+          const apiProfile: ApiUserProfile = await response.json();
+          
+          // Transform API response to our User interface
+          const user: User = {
+            id: apiProfile.id.toString(),
+            email: apiProfile.email,
+            firstName: apiProfile.first_name,
+            lastName: apiProfile.last_name,
+            phone: apiProfile.phone,
+            role: apiProfile.role as 'customer' | 'admin',
+            createdAt: new Date().toISOString(), // API doesn't provide this
+            preferences: {
+              notifications: true,
+              marketing: false,
+              theme: 'light'
+            },
+            // Transform addresses from API format to our format
+            addresses: apiProfile.addresses.map(addr => ({
+              id: addr.id.toString(),
+              firstName: addr.first_name,
+              lastName: addr.last_name || '',
+              street: addr.address_line_1,
+              city: addr.city,
+              state: addr.state,
+              pincode: addr.postal_code,
+              country: addr.country,
+              phone: addr.phone_number,
+              type: addr.address_type === 'work' ? 'office' : addr.address_type as 'home' | 'office' | 'other',
+              isDefault: addr.is_default
+            }))
+          };
+          
+          return {
+            data: user,
+            success: true,
+            message: 'Profile fetched successfully from API'
+          };
+        }
+      } catch (apiError) {
+        console.error('API Error fetching profile:', apiError);
       }
-
-      const idx = this.findMockUserIndex(id, email);
-      if (idx !== -1) {
-        return {
-          data: mockUsers[idx],
-          success: true,
-          message: MESSAGES.PROFILE.SUCCESS.FETCHED
-        };
-      }
-
-      if (authUser) {
-        // Construct a minimal profile from the authenticated user
-        const minimal: User = {
-          id: authUser.id?.toString?.() ?? (id ?? 'unknown'),
-          email: authUser.email ?? email ?? '',
-          firstName: authUser.firstName ?? 'Demo',
-          lastName: authUser.lastName ?? 'User',
-          phone: authUser.phone,
-          role: authUser.role ?? 'customer',
-          createdAt: authUser.createdAt ?? new Date().toISOString(),
-          preferences: authUser.preferences
-        } as User;
-        return {
-          data: minimal,
-          success: true,
-          message: MESSAGES.PROFILE.SUCCESS.FETCHED
-        };
-      }
-
+      
+      // Fallback: return empty profile
       return {
         data: {} as User,
         success: false,
-        message: MESSAGES.AUTH.ERROR.USER_NOT_FOUND
+        message: 'Profile not found'
       };
     } catch (error) {
+      console.error('Error in getCurrentProfile:', error);
       return {
         data: {} as User,
         success: false,
-        message: MESSAGES.PROFILE.ERROR.FETCH_FAILED
+        message: 'Failed to fetch profile'
       };
     }
   }
@@ -114,82 +133,24 @@ class ProfileService {
    * Update user profile
    */
   async updateProfile(updates: ProfileUpdateData): Promise<ProfileServiceResponse<User>> {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const { id, email } = await this.resolveAuthUser();
-      const userIndex = this.findMockUserIndex(id, email);
-      if (userIndex === -1) {
-        return {
-          data: {} as User,
-          success: false,
-          message: MESSAGES.AUTH.ERROR.USER_NOT_FOUND
-        };
-      }
-
-      // Update user data
-      mockUsers[userIndex] = {
-        ...mockUsers[userIndex],
-        ...updates,
-        preferences: {
-          ...mockUsers[userIndex].preferences,
-          ...updates.preferences
-        }
-      };
-
-      return {
-        data: mockUsers[userIndex],
-        success: true,
-        message: MESSAGES.PROFILE.SUCCESS.UPDATED
-      };
-    } catch (error) {
-      return {
-        data: {} as User,
-        success: false,
-        message: MESSAGES.PROFILE.ERROR.UPDATE_FAILED
-      };
-    }
+    // TODO: Implement API call to update profile
+    return {
+      data: {} as User,
+      success: false,
+      message: 'Profile update not implemented'
+    };
   }
 
   /**
    * Change password
    */
   async changePassword(passwordData: PasswordChangeData): Promise<ProfileServiceResponse<boolean>> {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Validate passwords match
-      if (passwordData.newPassword !== passwordData.confirmPassword) {
-        return {
-          data: false,
-          success: false,
-          message: MESSAGES.PROFILE.ERROR.PASSWORD_MISMATCH
-        };
-      }
-
-      // Validate password strength
-      if (passwordData.newPassword.length < 8) {
-        return {
-          data: false,
-          success: false,
-          message: MESSAGES.AUTH.ERROR.WEAK_PASSWORD
-        };
-      }
-
-      // Mock current password validation (always passes for demo)
-      // In real app, you'd verify the current password
-      
-      return {
-        data: true,
-        success: true,
-        message: MESSAGES.PROFILE.SUCCESS.PASSWORD_CHANGED
-      };
-    } catch (error) {
-      return {
-        data: false,
-        success: false,
-        message: MESSAGES.PROFILE.ERROR.PASSWORD_CHANGE_FAILED
-      };
-    }
+    // TODO: Implement API call to change password
+    return {
+      data: false,
+      success: false,
+      message: 'Password change not implemented'
+    };
   }
 
   /**
@@ -216,7 +177,7 @@ class ProfileService {
             pincode: addr.postal_code,
             country: addr.country,
             phone: addr.phone_number,
-            type: addr.address_type as 'home' | 'office' | 'other',
+            type: addr.address_type === 'work' ? 'office' : addr.address_type as 'home' | 'office' | 'other',
             isDefault: addr.is_default
           }));
           
@@ -228,25 +189,13 @@ class ProfileService {
         }
       } catch (apiError) {
         console.error('API Error fetching addresses:', apiError);
-        // Fall back to mock data if API fails
       }
       
-      // Fallback to mock data
-      const { id, email } = await this.resolveAuthUser();
-      const idx = this.findMockUserIndex(id, email);
-      const user = idx !== -1 ? mockUsers[idx] : undefined;
-      if (!user || !user.addresses) {
-        return {
-          data: [],
-          success: true,
-          message: 'No addresses found'
-        };
-      }
-
+      // Fallback: return empty addresses
       return {
-        data: user.addresses,
+        data: [],
         success: true,
-        message: 'Addresses fetched successfully from mock data'
+        message: 'No addresses found'
       };
     } catch (error) {
       return {
@@ -294,7 +243,7 @@ class ProfileService {
             pincode: apiResponse.postal_code,
             country: apiResponse.country,
             phone: apiResponse.phone_number,
-            type: apiResponse.address_type as 'home' | 'office' | 'other',
+            type: apiResponse.address_type === 'work' ? 'office' : apiResponse.address_type as 'home' | 'office' | 'other',
             isDefault: apiResponse.is_default
           };
           
@@ -306,31 +255,13 @@ class ProfileService {
         }
       } catch (apiError) {
         console.error('API Error adding address:', apiError);
-        // Fall back to mock implementation if API fails
       }
 
-      // Fallback to mock implementation
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      const newAddress: Address = {
-        ...address,
-        id: `addr-${Date.now()}`,
-        isDefault: false
-      };
-
-      const { id, email } = await this.resolveAuthUser();
-      const userIndex = this.findMockUserIndex(id, email);
-      if (userIndex !== -1) {
-        if (!mockUsers[userIndex].addresses) {
-          mockUsers[userIndex].addresses = [];
-        }
-        mockUsers[userIndex].addresses!.push(newAddress);
-      }
-
+      // Fallback: return error
       return {
-        data: newAddress,
-        success: true,
-        message: 'Address added successfully (mock)'
+        data: {} as Address,
+        success: false,
+        message: 'Failed to add address'
       };
     } catch (error) {
       return {
@@ -396,7 +327,7 @@ class ProfileService {
             pincode: apiResponse.postal_code,
             country: apiResponse.country,
             phone: apiResponse.phone_number,
-            type: apiResponse.address_type as 'home' | 'office' | 'other',
+            type: apiResponse.address_type === 'work' ? 'office' : apiResponse.address_type as 'home' | 'office' | 'other',
             isDefault: apiResponse.is_default
           };
           
@@ -408,37 +339,13 @@ class ProfileService {
         }
       } catch (apiError) {
         console.error('API Error updating address:', apiError);
-        // Fall back to mock implementation if API fails
       }
 
-      // Fallback to mock implementation
-      await new Promise(resolve => setTimeout(resolve, 500));
-      const { id, email } = await this.resolveAuthUser();
-      const userIndex = this.findMockUserIndex(id, email);
-      if (userIndex === -1 || !mockUsers[userIndex].addresses) {
-        return {
-          data: {} as Address,
-          success: false,
-          message: 'Address not found'
-        };
-      }
-
-      const addressIndex = mockUsers[userIndex].addresses!.findIndex((a: Address) => a.id === addressId);
-      if (addressIndex === -1) {
-        return {
-          data: {} as Address,
-          success: false,
-          message: 'Address not found'
-        };
-      }
-
-      const updatedAddress = { ...mockUsers[userIndex].addresses![addressIndex], ...updates };
-      mockUsers[userIndex].addresses![addressIndex] = updatedAddress;
-
+      // Fallback: return error
       return {
-        data: updatedAddress,
-        success: true,
-        message: 'Address updated successfully (mock)'
+        data: {} as Address,
+        success: false,
+        message: 'Failed to update address'
       };
     } catch (error) {
       return {
@@ -466,36 +373,13 @@ class ProfileService {
         }
       } catch (apiError) {
         console.error('API Error deleting address:', apiError);
-        // Fall back to mock implementation if API fails
       }
 
-      // Fallback to mock implementation
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const { id, email } = await this.resolveAuthUser();
-      const userIndex = this.findMockUserIndex(id, email);
-      if (userIndex === -1 || !mockUsers[userIndex].addresses) {
-        return {
-          data: false,
-          success: false,
-          message: 'Address not found'
-        };
-      }
-
-      const initialLength = mockUsers[userIndex].addresses!.length;
-      mockUsers[userIndex].addresses = mockUsers[userIndex].addresses!.filter((a: Address) => a.id !== addressId);
-
-      if (mockUsers[userIndex].addresses!.length === initialLength) {
-        return {
-          data: false,
-          success: false,
-          message: 'Address not found'
-        };
-      }
-
+      // Fallback: return error
       return {
-        data: true,
-        success: true,
-        message: 'Address deleted successfully (mock)'
+        data: false,
+        success: false,
+        message: 'Failed to delete address'
       };
     } catch (error) {
       return {
@@ -554,40 +438,13 @@ class ProfileService {
         }
       } catch (apiError) {
         console.error('API Error setting default address:', apiError);
-        // Fall back to mock implementation if API fails
       }
 
-      // Fallback to mock implementation
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const { id, email } = await this.resolveAuthUser();
-      const userIndex = this.findMockUserIndex(id, email);
-      if (userIndex === -1 || !mockUsers[userIndex].addresses) {
-        return {
-          data: false,
-          success: false,
-          message: 'Address not found'
-        };
-      }
-
-      // Remove default from all addresses
-      mockUsers[userIndex].addresses!.forEach((addr: Address) => { addr.isDefault = false; });
-
-      // Set new default
-      const addressIndex = mockUsers[userIndex].addresses!.findIndex((a: Address) => a.id === addressId);
-      if (addressIndex === -1) {
-        return {
-          data: false,
-          success: false,
-          message: 'Address not found'
-        };
-      }
-
-      mockUsers[userIndex].addresses![addressIndex].isDefault = true;
-
+      // Fallback: return error
       return {
-        data: true,
-        success: true,
-        message: 'Default address updated successfully (mock)'
+        data: false,
+        success: false,
+        message: 'Failed to update default address'
       };
     } catch (error) {
       return {
@@ -602,79 +459,31 @@ class ProfileService {
    * Get user payment methods
    */
   async getUserPaymentMethods(): Promise<ProfileServiceResponse<PaymentMethod[]>> {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const { id, email } = await this.resolveAuthUser();
-      const idx = this.findMockUserIndex(id, email);
-      const user = idx !== -1 ? mockUsers[idx] : undefined;
-      if (!user || !user.paymentMethods) {
-        return {
-          data: [],
-          success: true,
-          message: 'No payment methods found'
-        };
-      }
-
-      return {
-        data: user.paymentMethods,
-        success: true,
-        message: 'Payment methods fetched successfully'
-      };
-    } catch (error) {
-      return {
-        data: [],
-        success: false,
-        message: 'Failed to fetch payment methods'
-      };
-    }
+    // TODO: Implement API call to fetch payment methods
+    return {
+      data: [],
+      success: false,
+      message: 'Payment methods not implemented'
+    };
   }
 
   /**
    * Delete payment method
    */
   async deletePaymentMethod(paymentMethodId: string): Promise<ProfileServiceResponse<boolean>> {
-    try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      const { id, email } = await this.resolveAuthUser();
-      const userIndex = this.findMockUserIndex(id, email);
-      if (userIndex === -1 || !mockUsers[userIndex].paymentMethods) {
-        return {
-          data: false,
-          success: false,
-          message: 'Payment method not found'
-        };
-      }
-
-      const initialLength = mockUsers[userIndex].paymentMethods!.length;
-  mockUsers[userIndex].paymentMethods = mockUsers[userIndex].paymentMethods!.filter((pm: PaymentMethod) => pm.id !== paymentMethodId);
-
-      if (mockUsers[userIndex].paymentMethods!.length === initialLength) {
-        return {
-          data: false,
-          success: false,
-          message: 'Payment method not found'
-        };
-      }
-
-      return {
-        data: true,
-        success: true,
-        message: 'Payment method deleted successfully'
-      };
-    } catch (error) {
-      return {
-        data: false,
-        success: false,
-        message: 'Failed to delete payment method'
-      };
-    }
+    // TODO: Implement API call to delete payment method
+    return {
+      data: false,
+      success: false,
+      message: 'Payment method deletion not implemented'
+    };
   }
 
   /**
-   * Set current user (for testing purposes)
+   * Set current user (deprecated)
    */
   setCurrentUser(_userId: string): void {
-    // Deprecated: no-op. Auth is resolved from token/local storage now.
+    // Deprecated: no-op
   }
 }
 

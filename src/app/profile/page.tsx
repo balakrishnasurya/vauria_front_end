@@ -17,7 +17,8 @@ import { useMainContext } from '@/context/MainContext';
 
 import { profileService, type ProfileUpdateData, type PasswordChangeData } from '@/services/profile.service';
 import { ordersService, type Order } from '@/services/orders.service';
-import { type User, type Address, type PaymentMethod } from '@/models/interfaces/product.interface';
+import { productService } from '@/services/product.service';
+import { type User, type Address, type PaymentMethod, type Product } from '@/models/interfaces/product.interface';
 import { toast } from 'sonner';
 
 export default function ProfilePage() {
@@ -29,6 +30,8 @@ export default function ProfilePage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
+  const [productCache, setProductCache] = useState<Map<number, Product>>(new Map());
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -239,16 +242,66 @@ export default function ProfilePage() {
     }
   };
 
-  const toggleOrderExpansion = (orderId: string) => {
+  const toggleOrderExpansion = async (orderId: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
     setExpandedOrders(prev => {
       const newSet = new Set(prev);
       if (newSet.has(orderId)) {
         newSet.delete(orderId);
       } else {
         newSet.add(orderId);
+        // Load product details when expanding
+        loadProductsForOrder(order);
       }
       return newSet;
     });
+  };
+
+  const loadProductsForOrder = async (order: Order) => {
+    setLoadingItems(prev => new Set(prev).add(order.id));
+    
+    try {
+      const productPromises = order.items.map(async (item) => {
+        const productId = Number(item.product_id);
+        
+        // Check cache first
+        if (productCache.has(productId)) {
+          return { productId, product: productCache.get(productId)! };
+        }
+        
+        // Fetch from API
+        try {
+          const product = await productService.getProductById(productId);
+          return { productId, product };
+        } catch (error) {
+          console.error(`Failed to load product ${productId}:`, error);
+          return { productId, product: null };
+        }
+      });
+      
+      const results = await Promise.all(productPromises);
+      
+      // Update cache
+      setProductCache(prev => {
+        const newCache = new Map(prev);
+        results.forEach(({ productId, product }) => {
+          if (product) {
+            newCache.set(productId, product);
+          }
+        });
+        return newCache;
+      });
+    } catch (error) {
+      console.error('Error loading products for order:', error);
+    } finally {
+      setLoadingItems(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(order.id);
+        return newSet;
+      });
+    }
   };
 
   const formatCurrency = (amount: string) => {
@@ -364,7 +417,8 @@ export default function ProfilePage() {
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="font-serif">Personal Information</CardTitle>
-                    {!isEditing ? (
+                    {/* Edit and Save buttons commented out as requested */}
+                    {/* {!isEditing ? (
                       <Button
                         variant="outline"
                         onClick={() => setIsEditing(true)}
@@ -396,7 +450,7 @@ export default function ProfilePage() {
                           Save
                         </Button>
                       </div>
-                    )}
+                    )} */}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -406,9 +460,8 @@ export default function ProfilePage() {
                       <Input
                         id="firstName"
                         value={editedUser.firstName || ''}
-                        onChange={(e) => setEditedUser(prev => ({ ...prev, firstName: e.target.value }))}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-muted" : ""}
+                        disabled
+                        className="bg-muted"
                       />
                     </div>
                     <div>
@@ -416,9 +469,8 @@ export default function ProfilePage() {
                       <Input
                         id="lastName"
                         value={editedUser.lastName || ''}
-                        onChange={(e) => setEditedUser(prev => ({ ...prev, lastName: e.target.value }))}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-muted" : ""}
+                        disabled
+                        className="bg-muted"
                       />
                     </div>
                   </div>
@@ -439,9 +491,8 @@ export default function ProfilePage() {
                     <Input
                       id="phone"
                       value={editedUser.phone || ''}
-                      onChange={(e) => setEditedUser(prev => ({ ...prev, phone: e.target.value }))}
-                      disabled={!isEditing}
-                      className={!isEditing ? "bg-muted" : ""}
+                      disabled
+                      className="bg-muted"
                     />
                   </div>
                   
@@ -452,21 +503,17 @@ export default function ProfilePage() {
                         id="dateOfBirth"
                         type="date"
                         value={editedUser.dateOfBirth || ''}
-                        onChange={(e) => setEditedUser(prev => ({ ...prev, dateOfBirth: e.target.value }))}
-                        disabled={!isEditing}
-                        className={!isEditing ? "bg-muted" : ""}
+                        disabled
+                        className="bg-muted"
                       />
                     </div>
                     <div>
                       <Label htmlFor="gender">Gender</Label>
                       <Select
                         value={editedUser.gender || ''}
-                        onValueChange={(value: 'male' | 'female' | 'other') => 
-                          setEditedUser(prev => ({ ...prev, gender: value }))
-                        }
-                        disabled={!isEditing}
+                        disabled
                       >
-                        <SelectTrigger className={!isEditing ? "bg-muted" : ""}>
+                        <SelectTrigger className="bg-muted">
                           <SelectValue placeholder="Select gender" />
                         </SelectTrigger>
                         <SelectContent>
@@ -480,8 +527,9 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
 
+              {/* Security section commented out as requested */}
               {/* Change Password */}
-              <Card className="border-border">
+              {/* <Card className="border-border">
                 <CardHeader>
                   <CardTitle className="font-serif">Security</CardTitle>
                 </CardHeader>
@@ -529,7 +577,7 @@ export default function ProfilePage() {
                     </DialogContent>
                   </Dialog>
                 </CardContent>
-              </Card>
+              </Card> */}
             </TabsContent>
 
             {/* Addresses Tab */}
@@ -673,7 +721,8 @@ export default function ProfilePage() {
                               </p>
                             </div>
                             <div className="flex flex-col gap-2">
-                              {!address.isDefault && (
+                              {/* Set Default button commented out as requested */}
+                              {/* {!address.isDefault && (
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -681,15 +730,16 @@ export default function ProfilePage() {
                                 >
                                   Set Default
                                 </Button>
-                              )}
-                              <Button
+                              )} */}
+                              {/* Delete button commented out as requested */}
+                              {/* <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleDeleteAddress(address.id!)}
                                 className="text-destructive hover:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </Button>
+                              </Button> */}
                             </div>
                           </div>
                         </div>
@@ -824,17 +874,65 @@ export default function ProfilePage() {
                                 className="mt-4 pt-4 border-t border-border"
                               >
                                 <p className="text-sm font-medium mb-2">Order Items</p>
-                                <div className="space-y-2">
-                                  {order.items.map((item) => (
-                                    <div key={item.id} className="flex justify-between items-center p-2 bg-muted/20 rounded">
-                                      <div>
-                                        <p className="text-sm">Product ID: {item.product_id}</p>
-                                        <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
-                                      </div>
-                                      <p className="text-sm font-medium">{formatCurrency(item.price)}</p>
-                                    </div>
-                                  ))}
-                                </div>
+                                {loadingItems.has(order.id) ? (
+                                  <div className="flex items-center justify-center py-4">
+                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                    <span className="ml-2 text-sm text-muted-foreground">Loading items...</span>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {order.items.map((item) => {
+                                      const productId = Number(item.product_id);
+                                      const product = productCache.get(productId);
+                                      
+                                      return (
+                                        <div key={item.id} className="flex gap-3 p-3 bg-muted/20 rounded-lg">
+                                          {product ? (
+                                            <>
+                                              <div className="w-16 h-16 bg-muted rounded-md overflow-hidden flex-shrink-0">
+                                                <img 
+                                                  src={product.image_url || 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/CHAINS.JPG'} 
+                                                  alt={product.name}
+                                                  className="w-full h-full object-cover"
+                                                  onError={(e) => {
+                                                    const target = e.target as HTMLImageElement;
+                                                    target.src = 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/CHAINS.JPG';
+                                                  }}
+                                                />
+                                              </div>
+                                              <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">{product.name}</p>
+                                                <p className="text-xs text-muted-foreground mb-1">
+                                                  {product.material && `Material: ${product.material}`}
+                                                </p>
+                                                <div className="flex items-center justify-between">
+                                                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                                                  <div className="text-right">
+                                                    <p className="text-sm font-medium">{formatCurrency(item.price)}</p>
+                                                    {product.offer_price && product.offer_price < product.price && (
+                                                      <p className="text-xs text-muted-foreground line-through">
+                                                        {formatCurrency(product.price.toString())}
+                                                      </p>
+                                                    )}
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <div className="flex justify-between items-center w-full">
+                                              <div>
+                                                <p className="text-sm text-muted-foreground">Product ID: {item.product_id}</p>
+                                                <p className="text-xs text-muted-foreground">Quantity: {item.quantity}</p>
+                                                <p className="text-xs text-red-500">Product details unavailable</p>
+                                              </div>
+                                              <p className="text-sm font-medium">{formatCurrency(item.price)}</p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
                               </motion.div>
                             )}
                           </CardContent>
@@ -915,7 +1013,8 @@ export default function ProfilePage() {
                     </Select>
                   </div>
                   
-                  {isEditing && (
+                  {/* Save buttons commented out as requested */}
+                  {/* {isEditing && (
                     <div className="flex gap-2 pt-4">
                       <Button
                         variant="outline"
@@ -938,7 +1037,7 @@ export default function ProfilePage() {
                         Save
                       </Button>
                     </div>
-                  )}
+                  )} */}
                 </CardContent>
               </Card>
             </TabsContent>

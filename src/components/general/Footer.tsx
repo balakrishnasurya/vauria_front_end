@@ -17,6 +17,7 @@ import {
   Heart,
   Linkedin
 } from 'lucide-react';
+import { FOOTER_DATA, FOOTER_NAVIGATION } from '@/data/footer.data';
 const logoImagePath = '/logo.png';
 
 interface FooterProps {
@@ -29,36 +30,11 @@ export function Footer({ onAboutClick }: FooterProps) {
   const footerSections = [
     {
       title: "Shop",
-      links: [
-        { name: "Rings", href: "/category/rings" },
-        { name: "Necklaces", href: "/category/necklaces" },
-        { name: "Earrings", href: "/category/earrings" },
-        { name: "Bracelets", href: "/category/bracelets" },
-        { name: "Sets", href: "/category/sets" },
-        { name: "Chains", href: "/category/chains" }
-      ]
+      links: FOOTER_NAVIGATION.shop
     },
     {
       title: "Customer Care",
-      links: [
-        { name: "Contact Us", href: "/contact" },
-        { name: "Size Guide", href: "/size-guide" },
-        { name: "Care Instructions", href: "/care" },
-        { name: "Shipping Info", href: "/shipping" },
-        { name: "Returns", href: "/returns" },
-        { name: "FAQ", href: "/faq" }
-      ]
-    },
-    {
-      title: "About Vauria",
-      links: [
-        { name: "Our Story", href: "/about" },
-        { name: "Craftsmanship", href: "/craftsmanship" },
-        { name: "Sustainability", href: "/sustainability" },
-        { name: "Press", href: "/press" },
-        { name: "Careers", href: "/careers" },
-        { name: "Blog", href: "/blog" }
-      ]
+      links: FOOTER_NAVIGATION.customerCare
     }
   ];
 
@@ -105,7 +81,7 @@ export function Footer({ onAboutClick }: FooterProps) {
       {/* Main Footer Content */}
       <div className="py-12 lg:py-16 px-4 lg:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
             {/* Brand Section */}
             <div className="lg:col-span-2">
               <motion.div
@@ -126,11 +102,15 @@ export function Footer({ onAboutClick }: FooterProps) {
                 <div className="space-y-3 mb-6">
                   <div className="flex items-center gap-3 text-sm font-sans">
                     <Phone className="h-4 w-4 text-primary" />
-                    <span>+91 7842351757</span>
+                    <span>{FOOTER_DATA.contact.phone}</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm font-sans">
                     <Mail className="h-4 w-4 text-primary" />
-                    <span>vauria2025@gmail.com</span>
+                    <span>{FOOTER_DATA.contact.email}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-sans">
+                    <Instagram className="h-4 w-4 text-primary" />
+                    <span>Instagram DM: {FOOTER_DATA.contact.instagram}</span>
                   </div>
                   {/* Location/Address - COMMENTED OUT FOR LATER USE
                   <div className="flex items-center gap-3 text-sm font-sans">

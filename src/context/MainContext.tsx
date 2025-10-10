@@ -7,6 +7,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { authService } from '@/services/auth.service';
 import { httpService } from '@/services/http.service';
 import { categoryService } from '@/services/category.service';
+import { profileService } from '@/services/profile.service';
+import { cartService } from '@/services/cart.service';
 import { Category, CategoryNavItem } from '@/models/interfaces/categories.interface';
 
 // --- Type Definitions ---
@@ -38,6 +40,9 @@ interface MainContextProps {
     handleProfileClick: () => void;
     handleImageGenerationClick: () => void;
     handleAboutClick: () => void;
+    
+    // Cart utilities
+    refreshCartCount: () => Promise<void>;
     
     // Utility for Layout
     currentRouteIsDashboard: boolean;
@@ -72,7 +77,7 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
     const [currentUser, setCurrentUser] = useState<CurrentUser>(null);
     const [categories, setCategories] = useState<Category[]>([]);
     const [categoryNavItems, setCategoryNavItems] = useState<CategoryNavItem[]>([]);
-    const [cartItemCount, setCartItemCount] = useState(2); 
+    const [cartItemCount, setCartItemCount] = useState(0); // Start with 0, will be updated by cart service
     const [wishlistItemCount, setWishlistItemCount] = useState(6); 
     const [showLoginInline, setShowLoginInline] = useState(false);
     
@@ -87,14 +92,21 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
     useEffect(() => {
         const checkAuthAndLoadCategories = async () => {
             // 1. Check Auth & Handle User Setup
-            const user = await authService.getCurrentUser();
-            if (user) {
-                setCurrentUser({ 
-                    name: `${user.firstName || 'Demo'} ${user.lastName || 'User'}`, 
-                    email: user.email 
-                });
-                setIsAuthenticated(true);
-            } else {
+            try {
+                const profileResponse = await profileService.getCurrentProfile();
+                if (profileResponse.success && profileResponse.data) {
+                    const user = profileResponse.data;
+                    setCurrentUser({ 
+                        name: `${user.firstName || 'Demo'} ${user.lastName || 'User'}`, 
+                        email: user.email 
+                    });
+                    setIsAuthenticated(true);
+                } else {
+                    setIsAuthenticated(false);
+                    setCurrentUser(null);
+                }
+            } catch (error) {
+                console.error('Failed to load user profile:', error);
                 setIsAuthenticated(false);
                 setCurrentUser(null);
             }
@@ -129,8 +141,18 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
 
         checkAuthAndLoadCategories();
         
+        // Subscribe to cart count changes
+        const unsubscribeFromCart = cartService.subscribeToCartCount((count) => {
+            setCartItemCount(count);
+        });
+        
         // Apply dark theme on mount
         document.documentElement.classList.add('dark');
+        
+        // Cleanup subscription on unmount
+        return () => {
+            unsubscribeFromCart();
+        };
     }, [router]);
 
     // --- Auth Handlers ---
@@ -147,30 +169,35 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
     }, []);
     
     const handleLogin = async (email: string) => {
-        const user = await authService.getCurrentUser();
-        if (user) {
-            setCurrentUser({ 
-                name: `${user.firstName || 'Demo'} ${user.lastName || 'User'}`, 
-                email: user.email 
-            });
-            setIsAuthenticated(true);
-            setShowLoginInline(false);
+        try {
+            const profileResponse = await profileService.getCurrentProfile();
+            if (profileResponse.success && profileResponse.data) {
+                const user = profileResponse.data;
+                setCurrentUser({ 
+                    name: `${user.firstName || 'Demo'} ${user.lastName || 'User'}`, 
+                    email: user.email 
+                });
+                setIsAuthenticated(true);
+                setShowLoginInline(false);
 
-            // Check for redirect destination after login
-            const redirectTo = typeof window !== 'undefined' 
-                ? localStorage.getItem('vauria_redirect_after_login') 
-                : null;
-            
-            if (redirectTo) {
-                // Clear the stored redirect and message
-                localStorage.removeItem('vauria_redirect_after_login');
-                localStorage.removeItem('vauria_login_message');
-                router.push(redirectTo);
-            } else if (user.role === 'admin') {
-                router.push('/dashboard');
-            } else {
-                router.push('/profile');
+                // Check for redirect destination after login
+                const redirectTo = typeof window !== 'undefined' 
+                    ? localStorage.getItem('vauria_redirect_after_login') 
+                    : null;
+                
+                if (redirectTo) {
+                    // Clear the stored redirect and message
+                    localStorage.removeItem('vauria_redirect_after_login');
+                    localStorage.removeItem('vauria_login_message');
+                    router.push(redirectTo);
+                } else if (user.role === 'admin') {
+                    router.push('/dashboard');
+                } else {
+                    router.push('/profile');
+                }
             }
+        } catch (error) {
+            console.error('Failed to load user profile after login:', error);
         }
     };
 
@@ -235,6 +262,19 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
     }, [router, isAuthenticated]);
     const handleAboutClick = useCallback(() => { router.push('/about'); }, [router]);
 
+    // Cart utilities
+    const refreshCartCount = useCallback(async () => {
+        try {
+            console.log('Refreshing cart count...');
+            await cartService.forceRefreshCart();
+            const count = cartService.getCartItemCount();
+            console.log('Current cart count:', count);
+            setCartItemCount(count);
+        } catch (error) {
+            console.error('Failed to refresh cart count:', error);
+        }
+    }, []);
+
     // ------------------------------------
     // 4. CONTEXT VALUE
     // ------------------------------------
@@ -264,6 +304,8 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
         handleProfileClick,
         handleImageGenerationClick,
         handleAboutClick,
+        
+        refreshCartCount,
     };
 
     return (

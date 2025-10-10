@@ -173,28 +173,9 @@ export default function CheckoutPage() {
         );
         setSelectedShipping(cheapestOption);
       } else {
-        toast.error(response.message || 'No shipping options available');
-        // Fallback to old calculation method
-        const fallbackResponse = await checkoutService.calculateShipping(selectedAddress);
-        if (fallbackResponse.success) {
-          // Convert old format to new format
-          const fallbackOptions: ShippingRate[] = [
-            {
-              courier_id: 1,
-              courier_name: 'Standard Delivery',
-              rate: fallbackResponse.data.standard.cost,
-              etd: fallbackResponse.data.standard.days
-            },
-            {
-              courier_id: 2,
-              courier_name: 'Express Delivery',
-              rate: fallbackResponse.data.express.cost,
-              etd: fallbackResponse.data.express.days
-            }
-          ];
-          setShippingOptions(fallbackOptions);
-          setSelectedShipping(fallbackOptions[0]);
-        }
+        toast.error(response.message || 'No shipping options available for this address');
+        setShippingOptions([]);
+        setSelectedShipping(null);
       }
     } catch (error) {
       console.error('Shipping calculation error:', error);
@@ -288,8 +269,38 @@ export default function CheckoutPage() {
     }
   };
 
+  // Helper function to handle order revert
+  const handleOrderRevert = async (orderId: string, reason: string) => {
+    try {
+      console.log(`Reverting order (${reason}):`, orderId);
+      const revertResult = await ordersService.revertUserOrder(orderId);
+      
+      if (revertResult.success) {
+        console.log('Order reverted successfully:', revertResult.data);
+        toast.success('Order cancelled and cart restored');
+        
+        // Clear any stored payment credentials
+        paymentService.clearStoredPaymentCredentials();
+        paymentService.clearStoredPaymentResult();
+        
+        // Force refresh cart to show restored items
+        await cartService.forceRefreshCart();
+        
+        return true;
+      } else {
+        console.error('Failed to revert order:', revertResult.message);
+        toast.error('Failed to cancel order properly. Please contact support.');
+        return false;
+      }
+    } catch (error) {
+      console.error('Error reverting order:', error);
+      toast.error('Error cancelling order. Please contact support.');
+      return false;
+    }
+  };
+
   const calculateOrderSummary = (): OrderSummary => {
-    if (!cartSummary || !selectedShipping) {
+    if (!cartSummary) {
       return {
         subtotal: 0,
         shipping: 0,
@@ -305,7 +316,8 @@ export default function CheckoutPage() {
       total + ((item.offer_price || item.price) * item.quantity), 0
     );
 
-    const shipping = selectedShipping.rate;
+    // Shipping cost logic: Free shipping for orders ≥ ₹599, otherwise charge shipping
+    const shippingCost = subtotalWithOfferPrices >= 599 ? 0 : (selectedShipping?.rate || 0);
     
     // Calculate online payment discount (5% off subtotal)
     const onlinePaymentDiscount = selectedPayment === 'online' 
@@ -324,11 +336,12 @@ export default function CheckoutPage() {
       discountAmount = Math.min(discountAmount, subtotalWithOfferPrices);
     }
     
-    const total = subtotalWithOfferPrices + shipping - onlinePaymentDiscount - discountAmount;
+    // Total calculation: subtotal + shipping - discounts
+    const total = subtotalWithOfferPrices + shippingCost - onlinePaymentDiscount - discountAmount;
 
     return {
       subtotal: subtotalWithOfferPrices,
-      shipping,
+      shipping: shippingCost,
       tax: 0, // Tax removed as requested
       discount: discountAmount,
       total,
@@ -440,6 +453,9 @@ export default function CheckoutPage() {
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
       toast.error('Failed to load payment gateway. Please try again.');
+      
+      // Revert order if payment gateway fails to load
+      await handleOrderRevert(orderIdFromDb, 'payment gateway failure');
       return;
     }
 
@@ -456,6 +472,9 @@ export default function CheckoutPage() {
         contact: "9999999999",
       },
       handler: async function (response: any) {
+        // SUCCESS CASE: Razorpay sends response - existing flow unchanged
+        // This handles successful payments and verification process
+        
         // Store payment response
         paymentService.storePaymentResult(response);
         
@@ -516,9 +535,13 @@ export default function CheckoutPage() {
         // Payment verification is now handled above
       },
       modal: {
-        ondismiss: function () {
+        ondismiss: async function () {
+          // FAILURE CASE: User closes Razorpay modal without payment
           console.log("Payment cancelled by user");
           toast.error('Payment was cancelled');
+          
+          // Revert the order when user closes payment modal
+          await handleOrderRevert(orderIdFromDb, 'user cancelled payment');
         },
       },
       theme: {
@@ -1077,7 +1100,10 @@ export default function CheckoutPage() {
                       <div className="pt-6 border-t border-border">
                         <div className="text-center py-8">
                           <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                          <p className="text-muted-foreground">No shipping options available for this address</p>
+                          <p className="text-muted-foreground mb-2">This address may not be serviceable</p>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Please select a different address or payment method to see available shipping options
+                          </p>
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1360,30 +1386,47 @@ export default function CheckoutPage() {
                     <>
                       <div className="space-y-2 font-sans">
                         <div className="flex justify-between">
-                          <span>Subtotal ({cartSummary.itemCount} items)</span>
+                          <span>Subtotal ({cartSummary?.itemCount || 0} items)</span>
                           <span>
                             {formatPrice(
-                              cartSummary.items.reduce((total, item) => 
+                              cartSummary?.items.reduce((total, item) => 
                                 total + ((item.offer_price || item.price) * item.quantity), 0
-                              )
+                              ) || 0
                             )}
                           </span>
                         </div>
-                        {selectedShipping && (
-                          <div className="flex justify-between">
-                            <span>Shipping</span>
-                            <span>{formatPrice(selectedShipping.rate)}</span>
+                        
+                        {/* Shipping Cost Display */}
+                        {(cartSummary?.items.reduce((total, item) => 
+                          total + ((item.offer_price || item.price) * item.quantity), 0
+                        ) || 0) >= 599 ? (
+                          <div className="flex justify-between text-green-600 font-medium">
+                            <span>🎉 Free Delivery</span>
+                            <span>₹0</span>
+                          </div>
+                        ) : (
+                          <div className="space-y-1">
+                            {selectedShipping && orderSummary.shipping > 0 && (
+                              <div className="flex justify-between">
+                                <span>Shipping</span>
+                                <span>{formatPrice(orderSummary.shipping)}</span>
+                              </div>
+                            )}
+                            <div className="text-xs text-green-600 font-medium">
+                              💰 Shop above ₹599 for free delivery!
+                            </div>
                           </div>
                         )}
+                        
                         {/* Online Payment Discount */}
                         {selectedPayment === 'online' && (
                           <div className="flex justify-between text-green-600 font-medium">
                             <span>Online Payment Discount (5% off)</span>
                             <span>
                               -{formatPrice(
-                                cartSummary.items.reduce((total, item) => 
+                                (cartSummary?.items.reduce((total, item) => 
                                   total + ((item.offer_price || item.price) * item.quantity), 0
-                                ) * 0.05
+                                ) || 0) * 0.05
                               )}
                             </span>
                           </div>
@@ -1477,7 +1520,9 @@ export default function CheckoutPage() {
                   
                   <div className="space-y-2 pt-4">
                     {/* Conditional button based on payment option */}
-                    {selectedAddress && shippingOptions ? (
+                    {selectedAddress && (shippingOptions.length > 0 || (cartSummary?.items.reduce((total, item) => 
+                      total + ((item.offer_price || item.price) * item.quantity), 0
+                    ) || 0) >= 599) ? (
                       selectedPayment === 'cod' ? (
                         <Button
                           onClick={handlePlaceOrder}

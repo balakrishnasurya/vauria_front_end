@@ -56,6 +56,19 @@ export interface OrderServiceResponse<T> {
   message?: string;
 }
 
+export interface RevertOrderResponse {
+  status: string;
+  message: string;
+  order_id: string;
+  restored_items: {
+    product_id: number;
+    product_name: string;
+    quantity: number;
+  }[];
+  cart_updated: boolean;
+  stock_restored: boolean;
+}
+
 class OrdersService {
   /**
    * Get all orders for the current user
@@ -86,6 +99,43 @@ class OrdersService {
         data: [],
         success: false,
         message: 'Network error while fetching orders'
+      };
+    }
+  }
+
+  /**
+   * Revert user order - cancels order and restores stock/cart
+   */
+  async revertUserOrder(orderId: string): Promise<OrderServiceResponse<RevertOrderResponse>> {
+    try {
+      const payload = {
+        order_id: orderId,
+        reason: "cancelled_order since user closed payment and reverted stock and cart using user-revert"
+      };
+
+      const response = await httpService.post(BACKEND_ROUTES.PAYMENTS_USER_REVERT, payload);
+
+      if (response.ok) {
+        const data: RevertOrderResponse = await response.json();
+        return {
+          data,
+          success: true,
+          message: data.message || 'Order reverted successfully'
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: {} as RevertOrderResponse,
+          success: false,
+          message: errorData.message || 'Failed to revert order'
+        };
+      }
+    } catch (error) {
+      console.error('Error reverting order:', error);
+      return {
+        data: {} as RevertOrderResponse,
+        success: false,
+        message: 'Network error while reverting order'
       };
     }
   }
@@ -224,59 +274,27 @@ class OrdersService {
   }
 
   /**
-   * Format order status for display
+   * Format order status for display (deprecated - handle in UI components)
    */
   getStatusColor(status: string): string {
-    switch (status.toLowerCase()) {
-      case 'processing':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'shipped':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'delivered':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'pending':
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-      case 'returned':
-        return 'bg-purple-100 text-purple-800 border-purple-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
+    // Method body removed - handle styling in UI components
+    return 'bg-gray-100 text-gray-800 border-gray-200';
   }
 
   /**
-   * Format payment method for display
+   * Format payment method for display (deprecated - handle in UI components)
    */
   formatPaymentMethod(method: string): string {
-    switch (method.toLowerCase()) {
-      case 'cod':
-        return 'Cash on Delivery';
-      case 'online':
-        return 'Online Payment';
-      case 'card':
-        return 'Credit/Debit Card';
-      case 'upi':
-        return 'UPI';
-      default:
-        return method.charAt(0).toUpperCase() + method.slice(1);
-    }
+    // Method body removed - handle formatting in UI components
+    return method;
   }
 
   /**
-   * Format shipping method for display
+   * Format shipping method for display (deprecated - handle in UI components)
    */
   formatShippingMethod(method: string): string {
-    switch (method.toLowerCase()) {
-      case 'standard':
-        return 'Standard Delivery';
-      case 'express':
-        return 'Express Delivery';
-      case 'overnight':
-        return 'Overnight Delivery';
-      default:
-        return method.charAt(0).toUpperCase() + method.slice(1);
-    }
+    // Method body removed - handle formatting in UI components
+    return method;
   }
   /**
    * Create a Cash on Delivery order
@@ -356,17 +374,11 @@ class OrdersService {
   }
 
   /**
-   * Get delivery cost based on shipping method
+   * Get delivery cost based on shipping method (deprecated - use shipping API)
    */
   getDeliveryCost(shippingMethod: 'standard' | 'express'): number {
-    switch (shippingMethod) {
-      case 'standard':
-        return 75;
-      case 'express':
-        return 100;
-      default:
-        return 75;
-    }
+    // Method body removed - use real-time shipping rates API instead
+    return 0;
   }
 
   /**

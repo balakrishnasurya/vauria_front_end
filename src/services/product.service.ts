@@ -1,4 +1,4 @@
-import { mockProducts, mockRecentlyViewed, getSimilarProducts } from '@/data/products.data';
+import { mockProducts } from '@/data/products.data';
 import { Product } from '@/models/interfaces/product.interface';
 import { BACKEND_ROUTES } from '@/constants/routes/routes.constants';
 import { httpService } from '@/services/http.service';
@@ -8,6 +8,10 @@ export interface ProductService {
   getProductsFromApi(params?: ProductQueryParams): Promise<PaginatedProductResponse>;
   getProductBySlug(slug: string): Promise<Product | null>;
   getProductBySlugFromApi(slug: string): Promise<Product | null>;
+  getProductById(id: number | string): Promise<Product | null>;
+  getProductByIdFromApi(id: number | string): Promise<Product | null>;
+  searchProductsFromApi(query: string, params?: ProductQueryParams): Promise<PaginatedProductResponse>;
+  // Placeholder methods (not implemented)
   getProducts(): Promise<Product[]>;
   getFeaturedProducts(): Promise<Product[]>;
   getProductsByCategory(categoryId: string): Promise<Product[]>;
@@ -15,7 +19,6 @@ export interface ProductService {
   getRecentlyViewedProducts(): Promise<Product[]>;
   addToRecentlyViewed(productId: number | string): Promise<void>;
   searchProducts(query: string): Promise<Product[]>;
-  searchProductsFromApi(query: string, params?: ProductQueryParams): Promise<PaginatedProductResponse>;
 }
 
 export interface ProductQueryParams {
@@ -39,7 +42,6 @@ export interface PaginatedProductResponse {
 }
 
 class ProductServiceImpl implements ProductService {
-  private recentlyViewed: Product[] = [...mockRecentlyViewed];
 
   private mapApiProduct(p: any): Product {
     return this.productResponseTransform(p);
@@ -220,82 +222,73 @@ class ProductServiceImpl implements ProductService {
     }
   }
 
+  async getProductById(id: number | string): Promise<Product | null> {
+    // Try to get product from API first
+    try {
+      return await this.getProductByIdFromApi(id);
+    } catch (error) {
+      console.error("API call failed, falling back to mock data", error);
+      
+      // Fallback to mock data if API fails
+      await new Promise(resolve => setTimeout(resolve, 300));
+      const productId = Number(id);
+      const product = mockProducts.find(p => p.id === productId && p.is_active);
+      return product || null;
+    }
+  }
+  
+  async getProductByIdFromApi(id: number | string): Promise<Product | null> {
+    try {
+      const base = BACKEND_ROUTES.PRODUCT_BY_ID(id);
+      if (!base) throw new Error('PRODUCT_BY_ID route not configured');
+      const url = `${base}`;
+      
+      const res = await httpService.get(url);
+      if (!res.ok) throw new Error(`Failed to fetch product (${res.status})`);
+      
+      const data = await res.json();
+      if (!data || typeof data !== 'object') throw new Error('Unexpected product response format');
+      
+      const product = this.productResponseTransform(data);
+      return product;
+    } catch (e) {
+      console.error(`Error fetching product by ID: ${id}`, e);
+      throw e; // Re-throw to allow fallback in getProductById
+    }
+  }
+
   async getProducts(): Promise<Product[]> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockProducts.filter(p => p.is_active);
+    // TODO: Implement API call if needed
+    return [];
   }
 
   async getFeaturedProducts(): Promise<Product[]> {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    return mockProducts.filter(p => p.is_active && p.featured);
+    // TODO: Implement API call if needed
+    return [];
   }
 
   async getProductsByCategory(categoryId: string): Promise<Product[]> {
-    await new Promise(resolve => setTimeout(resolve, 600));
-    const categoryIdNum = Number(categoryId);
-    return mockProducts.filter(p => p.is_active && p.category_id === categoryIdNum);
+    // TODO: Implement API call if needed
+    return [];
   }
 
   async getSimilarProducts(productId: string, categoryId: string): Promise<Product[]> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return getSimilarProducts(productId, categoryId);
+    // TODO: Implement API call if needed
+    return [];
   }
 
   async getRecentlyViewedProducts(): Promise<Product[]> {
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return this.recentlyViewed;
+    // TODO: Implement if needed
+    return [];
   }
 
   async addToRecentlyViewed(productId: number | string): Promise<void> {
-    const idNum = Number(productId);
-    const product = mockProducts.find(p => p.id === idNum);
-    if (product) {
-      // Remove if already exists
-      this.recentlyViewed = this.recentlyViewed.filter(p => p.id !== idNum);
-      // Add to beginning
-      this.recentlyViewed.unshift(product);
-      // Keep only last 6 items
-      this.recentlyViewed = this.recentlyViewed.slice(0, 6);
-    }
+    // TODO: Implement if needed
   }
 
   async searchProducts(query: string): Promise<Product[]> {
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    if (!query.trim()) {
-      return [];
-    }
-
-    const searchTerm = query.toLowerCase().trim();
-    const searchWords = searchTerm.split(' ').filter(word => word.length > 0);
-    
-    // Search in mock products
-    const results = mockProducts.filter(p => {
-      if (!p.is_active) return false;
-      
-      const searchableText = [
-        p.name.toLowerCase(),
-        (p.description ?? '').toLowerCase(),
-        (p.material ?? '').toLowerCase(),
-        String(p.category_id ?? '').toLowerCase(),
-        ...((p.tags ?? []).map((tag: string) => tag.toLowerCase())),
-        ...Object.values(p.specifications ?? {}).map((spec) => String(spec).toLowerCase())
-      ].join(' ');
-      
-      // Check if all search words are found in the searchable text
-      return searchWords.every(word => searchableText.includes(word)) ||
-             // Or if the exact phrase is found
-             searchableText.includes(searchTerm);
-    });
-
-    // Sort results by relevance (exact matches first, then partial matches), then by name
-    return results.sort((a, b) => {
-      const aNameMatch = a.name.toLowerCase().includes(searchTerm);
-      const bNameMatch = b.name.toLowerCase().includes(searchTerm);
-      if (aNameMatch && !bNameMatch) return -1;
-      if (!aNameMatch && bNameMatch) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    // TODO: Use searchProductsFromApi instead
+    return [];
   }
 }
 

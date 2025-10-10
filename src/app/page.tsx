@@ -68,7 +68,7 @@ export default function HomePage( ) {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % banners.length);
-    }, 6000);
+    }, 9000);
     return () => clearInterval(interval);
   }, [banners.length]);
 
@@ -391,7 +391,7 @@ export default function HomePage( ) {
         </motion.section>
         */}
 
-        {/* CTA Section (Unchanged) */}
+        {/* CTA Section (Commented out as requested)
         <motion.section 
           className="py-16 lg:py-20 px-4 lg:px-6 bg-gradient-to-r from-primary/10 to-accent/10"
           variants={itemVariants}
@@ -424,6 +424,7 @@ export default function HomePage( ) {
             </motion.div>
           </div>
         </motion.section>
+        */}
       </main>
 
       {/* CONDITIONAL RENDERING Inline Login Modal LoginPageInline  (Using context state/handlers) */}

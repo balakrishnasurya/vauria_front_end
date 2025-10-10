@@ -42,12 +42,24 @@ export default function CartPage() {
   // Load cart data on mount
   useEffect(() => {
     const loadCartData = async () => {
+      console.log('Loading cart data...');
       setLoading(true);
-      const response = await cartService.getCartSummary();
-      if (response.success) {
-        setCartSummary(response.data);
+      try {
+        // Force refresh from API first
+        await cartService.forceRefreshCart();
+        // Then get the summary
+        const response = await cartService.getCartSummary();
+        console.log('Cart summary response:', response);
+        if (response.success) {
+          setCartSummary(response.data);
+        } else {
+          console.error('Failed to get cart summary:', response.message);
+        }
+      } catch (error) {
+        console.error('Error loading cart data:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadCartData();
@@ -254,25 +266,27 @@ export default function CartPage() {
                               {/* Quantity Controls */}
                               <div className="flex items-center gap-3">
                                 <div className="flex items-center border border-border rounded-lg">
-                                  <Button
+                                  {/* Quantity decrease button commented out as requested */}
+                                  {/* <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => updateQuantity(String(item.id), item.quantity - 1)}
                                     className="h-8 w-8 rounded-r-none"
                                   >
                                     <Minus className="h-4 w-4" />
-                                  </Button>
+                                  </Button> */}
                                   <span className="px-3 py-2 min-w-[3rem] text-center font-sans">
                                     {item.quantity}
                                   </span>
-                                  <Button
+                                  {/* Quantity increase button commented out as requested */}
+                                  {/* <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => updateQuantity(String(item.id), item.quantity + 1)}
                                     className="h-8 w-8 rounded-l-none"
                                   >
                                     <Plus className="h-4 w-4" />
-                                  </Button>
+                                  </Button> */}
                                 </div>
 
                                 {/* MOVE TO WISHLIST FUNCTIONALITY - COMMENTED OUT FOR LATER USE
@@ -325,6 +339,21 @@ export default function CartPage() {
                         )}
                       </span>
                     </div>
+                    
+                    {/* Free Delivery Message */}
+                    {cartSummary.items.reduce((total, item) => 
+                      total + ((item.offer_price || item.price) * item.quantity), 0
+                    ) >= 599 ? (
+                      <div className="flex justify-between text-green-600 font-medium font-sans">
+                        <span>🎉 Free Delivery</span>
+                        <span>₹0</span>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-green-600 font-medium font-sans">
+                        💰 Shop above ₹599 for free delivery!
+                      </div>
+                    )}
+                    
                     {/* Commented out as requested */}
                     {/*
                     <div className="flex justify-between font-sans">

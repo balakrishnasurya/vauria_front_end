@@ -391,7 +391,7 @@ export const getSimilarProducts = (productId: string, categoryId: string): Produ
 export const mockBanners: Banner[] = [
   {
     id: 'banner-1',
-    title: 'Celebrate Your Beauty With Every Ornament',
+    title: 'Jewels as Unique as You Are',
     subtitle: 'Discover timeless elegance',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/1.JPG?w=1200&h=600&fit=crop',
     ctaText: 'Shop Now',
@@ -400,7 +400,7 @@ export const mockBanners: Banner[] = [
   },
   {
     id: 'banner-2',
-    title: 'Pearl Collection',
+    title: 'Celebrate Every Chapter with a Touch of Gold',
     subtitle: 'Elegance Redefined',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/2.JPG?w=1200&h=600&fit=crop',
     ctaText: 'Explore Collection',
@@ -409,7 +409,7 @@ export const mockBanners: Banner[] = [
   },
   {
     id: 'banner-3',
-    title: 'Ruby Radiance',
+    title: 'Elegance Is Not Optional. It is Essential',
     subtitle: 'Passion in Every Gem',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/3.JPG?w=1200&h=600&fit=crop',
     ctaText: 'View Collection',
