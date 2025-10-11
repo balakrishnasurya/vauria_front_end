@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { useMainContext } from '@/context/MainContext';
 
 import { profileService, type ProfileUpdateData, type PasswordChangeData } from '@/services/profile.service';
@@ -37,6 +38,10 @@ export default function ProfilePage() {
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [selectedOrderForAction, setSelectedOrderForAction] = useState<string | null>(null);
+  const [actionReason, setActionReason] = useState('');
+  const [actionType, setActionType] = useState<'cancel' | 'return'>('return');
 
   // Password change form
   const [passwordData, setPasswordData] = useState<PasswordChangeData>({
@@ -223,22 +228,73 @@ export default function ProfilePage() {
     }
   };
 
-  const handleRequestReturn = async (orderId: string) => {
+  const handleOrderAction = async (orderId: string, action: 'cancel' | 'return') => {
+    setSelectedOrderForAction(orderId);
+    setActionReason('');
+    setActionType(action);
+    setShowActionDialog(true);
+  };
+
+  const submitOrderAction = async () => {
+    if (!selectedOrderForAction || !actionReason.trim()) {
+      toast.error(`Please enter a reason for ${actionType}`);
+      return;
+    }
+
     try {
-      const response = await ordersService.requestReturn(orderId, 'User requested return');
-      if (response.success) {
-        // Update the order in the local state
-        setOrders(prev => prev.map(order => 
-          order.id === orderId 
-            ? { ...order, return_request: true }
-            : order
-        ));
-        toast.success('Return request submitted successfully');
+      let response;
+      if (actionType === 'cancel') {
+        response = await ordersService.cancelOrder(selectedOrderForAction, actionReason.trim());
       } else {
-        toast.error(response.message || 'Failed to submit return request');
+        response = await ordersService.requestReturn(selectedOrderForAction, actionReason.trim());
+      }
+      
+      if (response.success) {
+        // Update the order in the local state with the response data
+        if (actionType === 'cancel' && response.data) {
+          // For cancellation, use the complete updated order from API response
+          setOrders(prev => prev.map(order => 
+            order.id === selectedOrderForAction ? response.data : order
+          ));
+        } else if (actionType === 'return' && response.data) {
+          // For return, use the complete updated order from API response
+          setOrders(prev => prev.map(order => 
+            order.id === selectedOrderForAction ? response.data : order
+          ));
+        } else {
+          // Fallback to manual state update if no data in response
+          setOrders(prev => prev.map(order => 
+            order.id === selectedOrderForAction 
+              ? { 
+                  ...order, 
+                  ...(actionType === 'cancel' 
+                    ? { 
+                        order_status: 'cancelled', 
+                        status: 'cancelled',
+                        cancel_reason: actionReason.trim(),
+                        cancelled_at: new Date().toISOString()
+                      }
+                    : { 
+                        return_request: true,
+                        order_status: 'Return Requested'
+                      })
+                }
+              : order
+          ));
+        }
+        
+        toast.success(`${actionType === 'cancel' ? 'Cancellation' : 'Return'} request submitted successfully`);
+        setShowActionDialog(false);
+        setSelectedOrderForAction(null);
+        setActionReason('');
+        
+        // Refresh orders to get updated data from server
+        loadProfileData();
+      } else {
+        toast.error(response.message || `Failed to submit ${actionType} request`);
       }
     } catch (error) {
-      toast.error('Failed to submit return request');
+      toast.error(`Failed to submit ${actionType} request`);
     }
   };
 
@@ -314,6 +370,27 @@ export default function ProfilePage() {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const getOrderStatusColor = (status: string): string => {
+    switch (status.toLowerCase()) {
+      case 'processing':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'shipped':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'in transit':
+        return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'out for delivery':
+        return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'delivered':
+        return 'bg-green-100 text-green-800 border-green-200';
+      case 'returned':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'paid':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
   if (loading) {
@@ -764,106 +841,213 @@ export default function ProfilePage() {
                   ) : (
                     <div className="space-y-4">
                       {orders.map((order) => (
-                        <Card key={order.id} className="border border-border">
-                          <CardContent className="p-6">
-                            {/* Order Header */}
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-sm">Order #{order.id.slice(0, 8)}</p>
-                                  <span className={`px-2 py-1 rounded-full text-xs font-medium border ${ordersService.getStatusColor(order.order_status)}`}>
-                                    {order.order_status}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Card key={order.id} className="border border-border hover:shadow-md transition-shadow">
+                          <CardContent className="p-3">
+                            {/* Order Header - Compact */}
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-base">#{order.id.slice(0, 8)}</p>
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getOrderStatusColor(order.order_status)}`}>
+                                  {order.order_status}
+                                </span>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold text-lg">{formatCurrency(order.total_amount)}</p>
+                                <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end">
                                   <Calendar className="h-3 w-3" />
                                   {formatDate(order.created_at)}
                                 </p>
                               </div>
-                              <div className="text-right">
-                                <p className="font-semibold">{formatCurrency(order.total_amount)}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {order.items.length} item{order.items.length !== 1 ? 's' : ''}
+                            </div>
+
+                            {/* Two Column Layout - Payment & Delivery */}
+                            <div className="grid grid-cols-2 gap-4 mb-3">
+                              {/* Left Column - Payment Info */}
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Payment Status</p>
+                                  <Badge 
+                                    variant={
+                                      order.status === 'paid' ? 'default' :
+                                      order.status === 'cancelled' ? 'destructive' :
+                                      order.status === 'returned' ? 'secondary' :
+                                      'outline'
+                                    }
+                                    className="text-xs h-6"
+                                  >
+                                    {order.status === 'paid' ? 'Paid' : 
+                                     order.status === 'cancelled' ? 'Cancelled' : 
+                                     order.status === 'pending' ? 'Pending' : 
+                                     order.status || 'Pending'}
+                                  </Badge>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Payment Method</p>
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs h-6"
+                                  >
+                                    {order.payment_method === 'COD' ? 'Cash on Delivery' : 'Online Payment'}
+                                  </Badge>
+                                </div>
+                              </div>
+
+                              {/* Right Column - Delivery Info */}
+                              <div className="space-y-2">
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Delivery Status</p>
+                                  <div className="flex items-center gap-1 p-2 bg-muted/20 rounded text-xs h-6">
+                                    <Package className="h-3 w-3 text-muted-foreground" />
+                                    <span className="font-medium">{order.order_status}</span>
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1">Delivery Cost</p>
+                                  <div className="flex items-center gap-1 p-2 bg-muted/20 rounded text-xs h-6">
+                                    <Truck className="h-3 w-3 text-muted-foreground" />
+                                    <span className="font-medium">{order.delivery_cost === '0.00' ? 'Free' : formatCurrency(order.delivery_cost)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Shipping Address - Below Two Columns */}
+                            <div className="mb-3">
+                              <div className="p-2 bg-muted/30 rounded-md">
+                                <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3" />
+                                  Shipping To:
+                                </p>
+                                <p className="text-xs text-muted-foreground line-clamp-2">
+                                  {order.shipping_address}
                                 </p>
                               </div>
                             </div>
 
-                            {/* Order Details Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Payment Method</p>
-                                <div className="flex items-center gap-1">
-                                  <CreditCardIcon className="h-3 w-3" />
-                                  <p className="text-sm">{ordersService.formatPaymentMethod(order.payment_method)}</p>
-                                </div>
-                              </div>
-                              
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Shipping Method</p>
-                                <div className="flex items-center gap-1">
-                                  <Truck className="h-3 w-3" />
-                                  <p className="text-sm">{ordersService.formatShippingMethod(order.shipping_method)}</p>
-                                </div>
-                              </div>
-
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Carrier</p>
-                                <p className="text-sm">{order.carrier_name}</p>
-                              </div>
-
-                              <div className="space-y-1">
-                                <p className="text-xs font-medium text-muted-foreground">Delivery Cost</p>
-                                <p className="text-sm">{order.delivery_cost === '0.00' ? 'Free' : formatCurrency(order.delivery_cost)}</p>
-                              </div>
-                            </div>
-
-                            {/* Shipping Address */}
-                            <div className="mb-4">
-                              <p className="text-xs font-medium text-muted-foreground mb-1">Shipping Address</p>
-                              <p className="text-sm bg-muted/30 p-2 rounded text-muted-foreground">
-                                {order.shipping_address}
-                              </p>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex items-center justify-between">
+                            {/* Action Buttons - Compact Layout */}
+                            <div className="flex items-center justify-between pt-2 border-t border-border/50">
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => toggleOrderExpansion(order.id)}
-                                className="gap-2"
+                                className="gap-2 text-xs h-7 px-3"
                               >
                                 {expandedOrders.has(order.id) ? (
                                   <>
-                                    <ChevronDown className="h-4 w-4" />
+                                    <ChevronDown className="h-3 w-3" />
                                     Hide Items
                                   </>
                                 ) : (
                                   <>
-                                    <ChevronRight className="h-4 w-4" />
+                                    <ChevronRight className="h-3 w-3" />
                                     View Items ({order.items.length})
                                   </>
                                 )}
                               </Button>
 
                               <div className="flex gap-2">
-                                {order.order_status.toLowerCase() === 'delivered' && !order.return_request && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRequestReturn(order.id)}
-                                    className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                                  >
-                                    Request Return
-                                  </Button>
-                                )}
-                                {order.return_request && (
-                                  <span className="px-2 py-1 rounded text-xs bg-orange-100 text-orange-800 border border-orange-200">
-                                    Return Requested
-                                  </span>
-                                )}
+                                {/* Conditional Cancel/Return Button */}
+                                {(() => {
+                                  const status = order.order_status.toLowerCase();
+                                  const isReturned = order.return_request;
+                                  const isCancelled = status === 'cancelled';
+                                  
+                                  // Show Cancel button for processing, shipped, in transit, out for delivery
+                                  if (['processing', 'shipped', 'in transit', 'out for delivery'].includes(status) && !isCancelled && !isReturned) {
+                                    return (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleOrderAction(order.id, 'cancel')}
+                                        className="text-red-600 border-red-200 hover:bg-red-50 h-7 px-3 text-xs"
+                                      >
+                                        Cancel
+                                      </Button>
+                                    );
+                                  }
+                                  
+                                  // Show Return button for delivered orders
+                                  if (status === 'delivered' && !isReturned && !isCancelled) {
+                                    return (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleOrderAction(order.id, 'return')}
+                                        className="text-orange-600 border-orange-200 hover:bg-orange-50 h-7 px-3 text-xs"
+                                      >
+                                        Return
+                                      </Button>
+                                    );
+                                  }
+                                  
+                                  // Show status for cancelled or returned orders
+                                  if (isCancelled) {
+                                    return (
+                                      <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-800 border border-red-200 h-7 flex items-center">
+                                        Cancelled
+                                      </span>
+                                    );
+                                  }
+                                  
+                                  if (isReturned) {
+                                    return (
+                                      <span className="px-2 py-1 rounded text-xs bg-orange-100 text-orange-800 border border-orange-200 h-7 flex items-center">
+                                        Return Requested
+                                      </span>
+                                    );
+                                  }
+                                  
+                                  return null;
+                                })()}
                               </div>
                             </div>
+
+                            {/* Action Dialog (Cancel/Return) */}
+                            <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
+                              <DialogContent className="max-w-md z-50 fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-900 border shadow-lg">
+                                <DialogHeader>
+                                  <DialogTitle>
+                                    {actionType === 'cancel' ? 'Cancel Order' : 'Request Return'}
+                                  </DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div>
+                                    <Label htmlFor="actionReason">
+                                      Reason for {actionType === 'cancel' ? 'Cancellation' : 'Return'}
+                                    </Label>
+                                    <Textarea
+                                      id="actionReason"
+                                      placeholder={`Please provide a reason for ${actionType === 'cancel' ? 'cancelling' : 'returning'} this order...`}
+                                      value={actionReason}
+                                      onChange={(e) => setActionReason(e.target.value)}
+                                      className="min-h-[100px] mt-2"
+                                    />
+                                  </div>
+                                  <div className="flex gap-2 justify-end">
+                                    <Button
+                                      variant="outline"
+                                      onClick={() => {
+                                        setShowActionDialog(false);
+                                        setSelectedOrderForAction(null);
+                                        setActionReason('');
+                                      }}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      onClick={submitOrderAction}
+                                      disabled={!actionReason.trim()}
+                                      className={`${actionType === 'cancel' 
+                                        ? 'bg-red-600 hover:bg-red-700' 
+                                        : 'bg-orange-600 hover:bg-orange-700'
+                                      } text-white`}
+                                    >
+                                      Submit {actionType === 'cancel' ? 'Cancellation' : 'Return'} Request
+                                    </Button>
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
 
                             {/* Expandable Items Section */}
                             {expandedOrders.has(order.id) && (

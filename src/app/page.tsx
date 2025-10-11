@@ -72,6 +72,13 @@ export default function HomePage( ) {
     return () => clearInterval(interval);
   }, [banners.length]);
 
+  // Handle banner button click
+  const handleBannerClick = (ctaLink: string) => {
+    // Extract category slug from link (remove leading slash)
+    const categorySlug = ctaLink.startsWith('/') ? ctaLink.slice(1) : ctaLink;
+    handleCategoryClick(categorySlug);
+  };
+
   // Removed redundant formatPrice and local handleCategoryClick
 
   const containerVariants = {
@@ -155,7 +162,10 @@ export default function HomePage( ) {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-lg px-8 py-3 h-12 shadow-lg hover:shadow-xl transition-all">
+                    <Button 
+                      onClick={() => handleBannerClick(banners[currentBanner].ctaLink)}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-lg px-8 py-3 h-12 shadow-lg hover:shadow-xl transition-all"
+                    >
                       <Sparkles className="mr-2 h-5 w-5" />
                       {banners[currentBanner].ctaText}
                     </Button>

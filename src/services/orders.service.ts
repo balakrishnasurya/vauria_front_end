@@ -141,6 +141,73 @@ class OrdersService {
   }
 
   /**
+   * Delete order from system (soft or permanent delete)
+   */
+  async deleteOrder(orderId: string, permanent: boolean = false): Promise<OrderServiceResponse<boolean>> {
+    try {
+      const response = await httpService.delete(BACKEND_ROUTES.ORDER_DELETE(orderId, permanent));
+
+      if (response.ok) {
+        return {
+          data: true,
+          success: true,
+          message: `Order ${permanent ? 'permanently ' : ''}deleted successfully`
+        };
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        return {
+          data: false,
+          success: false,
+          message: errorData.message || 'Failed to delete order'
+        };
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      return {
+        data: false,
+        success: false,
+        message: 'Network error while deleting order'
+      };
+    }
+  }
+
+  /**
+   * Revert and delete order - convenience method for checkout page
+   */
+  async revertAndDeleteOrder(orderId: string, permanent: boolean = false): Promise<OrderServiceResponse<RevertOrderResponse & { deleted: boolean }>> {
+    try {
+      // First revert the order
+      const revertResult = await this.revertUserOrder(orderId);
+      
+      if (!revertResult.success) {
+        return {
+          data: { ...revertResult.data, deleted: false },
+          success: false,
+          message: revertResult.message
+        };
+      }
+
+      // Then delete the order
+      const deleteResult = await this.deleteOrder(orderId, permanent);
+      
+      return {
+        data: { ...revertResult.data, deleted: deleteResult.success },
+        success: revertResult.success && deleteResult.success,
+        message: deleteResult.success 
+          ? 'Order reverted and deleted successfully'
+          : `Order reverted but deletion failed: ${deleteResult.message}`
+      };
+    } catch (error) {
+      console.error('Error reverting and deleting order:', error);
+      return {
+        data: {} as RevertOrderResponse & { deleted: boolean },
+        success: false,
+        message: 'Network error while reverting and deleting order'
+      };
+    }
+  }
+
+  /**
    * Update order status (for admin/backend simulation)
    */
   async updateOrderStatus(orderId: string, status: string): Promise<OrderServiceResponse<Order>> {
@@ -177,23 +244,26 @@ class OrdersService {
   /**
    * Request return for an order
    */
-  async requestReturn(orderId: string, reason: string): Promise<OrderServiceResponse<boolean>> {
+  async requestReturn(orderId: string, reason: string): Promise<OrderServiceResponse<Order>> {
     try {
-      const response = await httpService.patch(`${BACKEND_ROUTES.ORDERS || '/api/orders'}/${orderId}/return`, {
+      const payload = {
         return_request: true,
-        return_reason: reason
-      });
+        order_status: "Return Requested"
+      };
+
+      const response = await httpService.patch(BACKEND_ROUTES.ORDER_CANCEL(orderId), payload);
 
       if (response.ok) {
+        const updatedOrder: Order = await response.json();
         return {
-          data: true,
+          data: updatedOrder,
           success: true,
           message: 'Return request submitted successfully'
         };
       } else {
         const errorData = await response.json().catch(() => ({}));
         return {
-          data: false,
+          data: {} as Order,
           success: false,
           message: errorData.message || 'Failed to submit return request'
         };
@@ -201,7 +271,7 @@ class OrdersService {
     } catch (error) {
       console.error('Error requesting return:', error);
       return {
-        data: false,
+        data: {} as Order,
         success: false,
         message: 'Network error while submitting return request'
       };
@@ -243,22 +313,26 @@ class OrdersService {
   /**
    * Cancel an order (if allowed)
    */
-  async cancelOrder(orderId: string): Promise<OrderServiceResponse<boolean>> {
+  async cancelOrder(orderId: string, cancelReason?: string): Promise<OrderServiceResponse<Order>> {
     try {
-      const response = await httpService.patch(`${BACKEND_ROUTES.ORDERS || '/api/orders'}/${orderId}/cancel`, {
-        status: 'cancelled'
-      });
+      const payload = {
+        status: 'cancelled',
+        cancel_reason: cancelReason || 'Customer requested cancellation'
+      };
+
+      const response = await httpService.patch(BACKEND_ROUTES.ORDER_CANCEL(orderId), payload);
 
       if (response.ok) {
+        const updatedOrder: Order = await response.json();
         return {
-          data: true,
+          data: updatedOrder,
           success: true,
           message: 'Order cancelled successfully'
         };
       } else {
         const errorData = await response.json().catch(() => ({}));
         return {
-          data: false,
+          data: {} as Order,
           success: false,
           message: errorData.message || 'Failed to cancel order'
         };
@@ -266,7 +340,7 @@ class OrdersService {
     } catch (error) {
       console.error('Error cancelling order:', error);
       return {
-        data: false,
+        data: {} as Order,
         success: false,
         message: 'Network error while cancelling order'
       };

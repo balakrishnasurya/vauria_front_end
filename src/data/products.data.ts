@@ -395,7 +395,7 @@ export const mockBanners: Banner[] = [
     subtitle: 'Discover timeless elegance',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/1.JPG?w=1200&h=600&fit=crop',
     ctaText: 'Shop Now',
-    ctaLink: '/products',
+    ctaLink: '/traditional-chains',
     isActive: true
   },
   {
@@ -404,7 +404,7 @@ export const mockBanners: Banner[] = [
     subtitle: 'Elegance Redefined',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/2.JPG?w=1200&h=600&fit=crop',
     ctaText: 'Explore Collection',
-    ctaLink: '/category/pearls',
+    ctaLink: '/necklaces',
     isActive: true
   },
   {
@@ -413,7 +413,7 @@ export const mockBanners: Banner[] = [
     subtitle: 'Passion in Every Gem',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/3.JPG?w=1200&h=600&fit=crop',
     ctaText: 'View Collection',
-    ctaLink: '/category/ruby',
+    ctaLink: '/bangles',
     isActive: true
   }
 ];

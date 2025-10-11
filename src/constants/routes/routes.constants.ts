@@ -17,6 +17,8 @@ export const BACKEND_ROUTES = {
   ORDERS_ME: `${BASE_URL}/api/v1/orders/me`,
   ORDERS_COD: `${BASE_URL}/api/v1/orders/cod`,
   ORDERS_ONLINE: `${BASE_URL}/api/v1/orders/online`,
+  ORDER_DELETE: (orderId: string, permanent: boolean = false) => `${BASE_URL}/api/v1/orders/${orderId}?permanent=${permanent}`,
+  ORDER_CANCEL: (orderId: string) => `${BASE_URL}/api/v1/orders/${orderId}`,
   PAYMENTS_CREATE: `${BASE_URL}/api/v1/payments/create`,
   PAYMENTS_VERIFY: `${BASE_URL}/api/v1/payments/verify`,
   PAYMENTS_USER_REVERT: `${BASE_URL}/api/v1/payments/user-revert`,

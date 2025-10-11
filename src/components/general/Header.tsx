@@ -244,7 +244,7 @@ export function Header({
 
         {/* Right: Icons */}
         <div className="flex items-center gap-4">
-          {/* Try On Button */}
+          {/* TRY ON FUNCTIONALITY - COMMENTED OUT FOR LATER USE
           <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
             <Button 
               onClick={onImageGenerationClick}
@@ -256,6 +256,7 @@ export function Header({
               Try On
             </Button>
           </motion.div>
+          */}
 
           <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
             <DropdownMenu>
@@ -425,7 +426,7 @@ export function Header({
                   </div>
                 )}
                 
-                {/* Mobile Try On Button */}
+                {/* MOBILE TRY ON FUNCTIONALITY - COMMENTED OUT FOR LATER USE
                 <div className="p-4 border-t border-border">
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -444,6 +445,7 @@ export function Header({
                     </Button>
                   </motion.div>
                 </div>
+                */}
               </motion.div>
             </SheetContent>
           </Sheet>

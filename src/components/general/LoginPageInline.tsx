@@ -21,7 +21,8 @@ export function LoginPageInline({ onLogin, onClose }: LoginPageInlineProps) {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    phone: ''
+    phone: '',
+    gender: 'male' as 'male' | 'female' | 'other'
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -67,7 +68,8 @@ export function LoginPageInline({ onLogin, onClose }: LoginPageInlineProps) {
         password: registerData.password,
         first_name: registerData.firstName,
         last_name: registerData.lastName,
-        phone: registerData.phone
+        phone: registerData.phone,
+        gender: registerData.gender
       });
 
       if (response.success && response.user) {
@@ -225,15 +227,31 @@ export function LoginPageInline({ onLogin, onClose }: LoginPageInlineProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="phone" className="font-sans font-medium">Phone (Optional)</Label>
+                      <Label htmlFor="phone" className="font-sans font-medium">Phone Number</Label>
                       <Input
                         id="phone"
                         type="tel"
                         placeholder="+91 98765 43210"
                         value={registerData.phone}
                         onChange={(e) => setRegisterData(prev => ({ ...prev, phone: e.target.value }))}
+                        required
                         className="h-12 bg-input-background border-border font-sans focus:ring-2 focus:ring-primary/20"
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="gender" className="font-sans font-medium">Gender</Label>
+                      <select
+                        id="gender"
+                        value={registerData.gender}
+                        onChange={(e) => setRegisterData(prev => ({ ...prev, gender: e.target.value as 'male' | 'female' | 'other' }))}
+                        className="w-full h-12 px-3 bg-input-background border border-border rounded-lg font-sans text-sm focus:ring-2 focus:ring-primary/20"
+                        required
+                      >
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
+                      </select>
                     </div>
 
                     <div className="space-y-2">

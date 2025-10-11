@@ -269,15 +269,19 @@ export default function CheckoutPage() {
     }
   };
 
-  // Helper function to handle order revert
+  // Helper function to handle order revert and deletion
   const handleOrderRevert = async (orderId: string, reason: string) => {
     try {
-      console.log(`Reverting order (${reason}):`, orderId);
-      const revertResult = await ordersService.revertUserOrder(orderId);
+      console.log(`Reverting and deleting order (${reason}):`, orderId);
+      const revertResult = await ordersService.revertAndDeleteOrder(orderId, false); // soft delete
       
       if (revertResult.success) {
-        console.log('Order reverted successfully:', revertResult.data);
-        toast.success('Order cancelled and cart restored');
+        console.log('Order reverted and deleted successfully:', revertResult.data);
+        if (revertResult.data.deleted) {
+          toast.success('Order cancelled, deleted, and cart restored');
+        } else {
+          toast.success('Order cancelled and cart restored (deletion may have failed)');
+        }
         
         // Clear any stored payment credentials
         paymentService.clearStoredPaymentCredentials();

@@ -255,6 +255,7 @@ export default function LoginPage() {
                         placeholder="Enter your phone number"
                         value={signupForm.phone}
                         onChange={(e) => setSignupForm({ ...signupForm, phone: e.target.value })}
+                        required
                         className="font-sans"
                       />
                     </div>
