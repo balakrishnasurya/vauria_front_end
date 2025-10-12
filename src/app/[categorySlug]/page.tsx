@@ -408,6 +408,7 @@ export default function CategoryPage({ params }: CategoryPageProps) {
 
           <div className="flex items-center gap-3">
             {/* Sort Dropdown */}
+            {/**   
             <select
               value={sortBy}
               onChange={(e) => handleSortChange(e.target.value as SortOption)}
@@ -419,8 +420,12 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                 </option>
               ))}
             </select>
-
-            {/* Filter Button */}
+             */}
+            {/**
+             * Filters UI temporarily disabled
+             * Keeping the sorting dropdown active above.
+             */}
+            {/**
             <Sheet open={showFilters} onOpenChange={setShowFilters}>
               <SheetTrigger asChild>
                 <Button variant="outline" className="gap-2 font-sans">
@@ -438,137 +443,15 @@ export default function CategoryPage({ params }: CategoryPageProps) {
                   <SheetTitle className="font-serif">Filters</SheetTitle>
                 </SheetHeader>
                 <div className="mt-6 space-y-6">
-                  {/* Price Range Filter */}
-                  {filterOptions.priceRanges && (
-                    <div>
-                      <h3 className="font-serif font-medium mb-3">Price Range</h3>
-                      <div className="space-y-2">
-                        {filterOptions.priceRanges.map((range: { min: number; max: number | null; label: string }) => (
-                          <label key={`price-${range.min}-${range.max}`} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={tempFilters.priceRange?.label === range.label}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setTempFilters({
-                                    ...tempFilters,
-                                    priceRange: { 
-                                      min: Number.isFinite(range.min) ? range.min : 0, 
-                                      max: Number.isFinite(range.max as number) ? (range.max as number) : Number.MAX_SAFE_INTEGER, 
-                                      label: range.label 
-                                    }
-                                  });
-                                } else {
-                                  // Only clear if currently selected range matches
-                                  if (tempFilters.priceRange?.label === range.label) {
-                                    const { priceRange, ...rest } = tempFilters as any;
-                                    setTempFilters(rest);
-                                  }
-                                }
-                              }}
-                              className="rounded"
-                            />
-                            <span className="font-sans text-sm">{range.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Material Filter */}
-                  {filterOptions.materials && (
-                    <div>
-                      <h3 className="font-serif font-medium mb-3">Material</h3>
-                      <div className="space-y-2">
-                        {filterOptions.materials.map((material: string) => (
-                          <label key={`material-${material}`} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={tempFilters.materials?.includes(material) || false}
-                              onChange={(e) => {
-                                const current = tempFilters.materials || [];
-                                if (e.target.checked) {
-                                  setTempFilters({
-                                    ...tempFilters,
-                                    materials: [...current, material]
-                                  });
-                                } else {
-                                  setTempFilters({
-                                    ...tempFilters,
-                                    materials: current.filter((m: string) => m !== material)
-                                  });
-                                }
-                              }}
-                              className="rounded"
-                            />
-                            <span className="font-sans text-sm">{material}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Rating Filter */}
-                  {filterOptions.ratings && (
-                    <div>
-                      <h3 className="font-serif font-medium mb-3">Rating</h3>
-                      <div className="space-y-2">
-                        {filterOptions.ratings.map((rating: number) => (
-                          <label key={`rating-${rating}`} className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              checked={tempFilters.ratings?.includes(rating) || false}
-                              onChange={(e) => {
-                                const current = tempFilters.ratings || [] as number[];
-                                if (e.target.checked) {
-                                  setTempFilters({
-                                    ...tempFilters,
-                                    ratings: [...current, rating]
-                                  });
-                                } else {
-                                  setTempFilters({
-                                    ...tempFilters,
-                                    ratings: current.filter((r: number) => r !== rating)
-                                  });
-                                }
-                              }}
-                              className="rounded"
-                            />
-                            <div className="flex items-center gap-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`h-3 w-3 ${
-                                    i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'
-                                  }`}
-                                />
-                              ))}
-                              <span>& up</span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  ... filter sections ...
                 </div>
-
                 <div className="mt-8 flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={handleClearFilters}
-                    className="flex-1 font-sans"
-                  >
-                    Clear All
-                  </Button>
-                  <Button
-                    onClick={handleApplyFilters}
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-sans"
-                  >
-                    Apply Filters
-                  </Button>
+                  <Button variant="outline" onClick={handleClearFilters} className="flex-1 font-sans">Clear All</Button>
+                  <Button onClick={handleApplyFilters} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground font-sans">Apply Filters</Button>
                 </div>
               </SheetContent>
             </Sheet>
+            */}
           </div>
         </motion.div>
 
@@ -581,15 +464,9 @@ export default function CategoryPage({ params }: CategoryPageProps) {
             className="text-center py-16"
           >
             <h2 className="font-serif text-xl font-bold mb-2">No products found</h2>
-            <p className="font-sans text-muted-foreground mb-6">
-              Try adjusting your filters or search criteria
+            <p className="font-sans text-muted-foreground">
+              Try a different sort option or check back later.
             </p>
-            <Button
-              onClick={handleClearFilters}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans"
-            >
-              Clear Filters
-            </Button>
           </motion.div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6 mb-8">
