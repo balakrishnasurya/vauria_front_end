@@ -1,6 +1,6 @@
 'use client'; 
 
-
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import {
   Linkedin
 } from 'lucide-react';
 import { FOOTER_DATA, FOOTER_NAVIGATION } from '@/data/footer.data';
+import { toast } from 'sonner';
 const logoImagePath = '/logo.png';
 
 interface FooterProps {
@@ -26,6 +27,8 @@ interface FooterProps {
 
 export function Footer({ onAboutClick }: FooterProps) {
   const currentYear = new Date().getFullYear();
+  const [email, setEmail] = useState('');
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   const footerSections = [
     {
@@ -37,6 +40,25 @@ export function Footer({ onAboutClick }: FooterProps) {
       links: FOOTER_NAVIGATION.customerCare
     }
   ];
+
+  const handleNewsletterSubscribe = () => {
+    if (!email.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Show success message
+    toast.success('Successfully subscribed to our newsletter!');
+    setIsSubscribed(true);
+    setEmail('');
+  };
 
   return (
     <footer className="bg-card border-t border-border">
@@ -54,22 +76,36 @@ export function Footer({ onAboutClick }: FooterProps) {
               Join the Royal Newsletter
             </h3>
             <p className="font-sans text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Be the first to know about new collections, exclusive offers, and royal events. 
-              Subscribe to receive 10% off your first purchase.
+              Be the first to know about new collections, exclusive offers, and royal events.
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <Input
-                type="email"
-                placeholder="Enter your royal email"
-                className="flex-1 h-12 bg-background border-border font-sans"
-              />
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button className="h-12 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-sans">
-                  Subscribe
-                </Button>
-              </motion.div>
-            </div>
+            {!isSubscribed ? (
+              <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
+                <Input
+                  type="email"
+                  placeholder="Enter your royal email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleNewsletterSubscribe()}
+                  className="flex-1 h-12 bg-background border-border font-sans"
+                />
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Button 
+                    onClick={handleNewsletterSubscribe}
+                    className="h-12 px-6 bg-primary hover:bg-primary/90 text-primary-foreground font-sans"
+                  >
+                    Subscribe
+                  </Button>
+                </motion.div>
+              </div>
+            ) : (
+              <div className="max-w-md mx-auto">
+                <div className="flex items-center justify-center gap-2 text-green-600 font-medium">
+                  <Crown className="h-5 w-5" />
+                  <span>Thank you for joining our royal newsletter!</span>
+                </div>
+              </div>
+            )}
             
             <p className="text-xs text-muted-foreground mt-3 font-sans">
               By subscribing, you agree to our Privacy Policy. Unsubscribe anytime.
