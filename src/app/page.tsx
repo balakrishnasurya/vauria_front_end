@@ -150,28 +150,33 @@ export default function HomePage( ) {
                 alt={banners[currentBanner].title}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <div className="text-center text-white">
-                  <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl font-bold mb-2">
-                    {banners[currentBanner].title}
-                  </h1>
-                  <p className="font-sans text-lg md:text-xl lg:text-2xl mb-6">
-                    {banners[currentBanner].subtitle}
-                  </p>
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <Button 
-                      onClick={() => handleBannerClick(banners[currentBanner].ctaLink)}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-lg px-8 py-3 h-12 shadow-lg hover:shadow-xl transition-all"
-                    >
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      {banners[currentBanner].ctaText}
-                    </Button>
-                  </motion.div>
+              {/* Conditionally render overlay based on showOverlay property */}
+              {banners[currentBanner].showOverlay !== false && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <h1 className="font-serif text-3xl md:text-5xl lg:text-6xl font-bold mb-2">
+                      {banners[currentBanner].title}
+                    </h1>
+                    <p className="font-sans text-lg md:text-xl lg:text-2xl mb-6">
+                      {banners[currentBanner].subtitle}
+                    </p>
+                    {banners[currentBanner].ctaText && (
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <Button 
+                          onClick={() => handleBannerClick(banners[currentBanner].ctaLink)}
+                          className="bg-primary hover:bg-primary/90 text-primary-foreground font-sans text-lg px-8 py-3 h-12 shadow-lg hover:shadow-xl transition-all"
+                        >
+                          <Sparkles className="mr-2 h-5 w-5" />
+                          {banners[currentBanner].ctaText}
+                        </Button>
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </motion.div>
           </AnimatePresence>
 

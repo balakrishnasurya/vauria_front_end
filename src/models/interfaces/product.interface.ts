@@ -144,6 +144,7 @@ export interface Banner {
   ctaText: string;
   ctaLink: string;
   isActive: boolean;
+  showOverlay?: boolean; // New property to control overlay display
 }
 
 // Image Generation Types

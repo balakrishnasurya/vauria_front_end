@@ -27,30 +27,43 @@ export const getSimilarProducts = (productId: string, categoryId: string): Produ
 export const mockBanners: Banner[] = [
   {
     id: 'banner-1',
+    title: ' ',
+    subtitle: ' ',
+    image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/banners/WhatsApp%20Image%202025-10-18%20at%201.25.20%20PM.jpeg?w=1200&h=600&fit=crop',
+    ctaText: '',
+    ctaLink: '/',
+    isActive: false,
+    showOverlay: false // No overlay for the first banner
+  },
+  {
+    id: 'banner-2',
     title: 'Jewels as Unique as You Are',
     subtitle: 'Discover timeless elegance',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/1.JPG?w=1200&h=600&fit=crop',
     ctaText: 'Shop Now',
     ctaLink: '/traditional-chains',
-    isActive: true
+    isActive: true,
+    showOverlay: true // Show overlay for other banners
   },
   {
-    id: 'banner-2',
+    id: 'banner-3',
     title: 'Celebrate Every Chapter with a Touch of Gold',
     subtitle: 'Elegance Redefined',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/2.JPG?w=1200&h=600&fit=crop',
     ctaText: 'Explore Collection',
     ctaLink: '/necklaces',
-    isActive: true
+    isActive: true,
+    showOverlay: true // Show overlay for other banners
   },
   {
-    id: 'banner-3',
+    id: 'banner-4',
     title: 'Elegance Is Not Optional. It is Essential',
     subtitle: 'Passion in Every Gem',
     image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/3.JPG?w=1200&h=600&fit=crop',
     ctaText: 'View Collection',
     ctaLink: '/bangles',
-    isActive: true
+    isActive: true,
+    showOverlay: true // Show overlay for other banners
   }
 ];
 
