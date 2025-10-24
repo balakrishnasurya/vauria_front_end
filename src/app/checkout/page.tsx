@@ -60,7 +60,7 @@ export default function CheckoutPage() {
   const [shippingOptions, setShippingOptions] = useState<ShippingRate[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingRate | null>(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState<'cod' | 'online'>('cod');
+  const [selectedPayment, setSelectedPayment] = useState<'cod' | 'online'>('online');
   const [isGift, setIsGift] = useState(false);
   const [giftMessage, setGiftMessage] = useState('');
   const [deliveryInstructions, setDeliveryInstructions] = useState('');
@@ -166,12 +166,26 @@ export default function CheckoutPage() {
       );
       
       if (response.success && response.data.length > 0) {
-        setShippingOptions(response.data);
-        // Auto-select the cheapest option
-        const cheapestOption = response.data.reduce((prev, current) => 
-          prev.rate < current.rate ? prev : current
-        );
-        setSelectedShipping(cheapestOption);
+        // Check if order qualifies for free express delivery (≥ ₹599)
+        if (totalAmount >= 599) {
+          // Show only free express delivery option
+          const freeExpressOption: ShippingRate = {
+            courier_id: 999, // Special ID for free express
+            courier_name: "Free Express Delivery",
+            rate: 0,
+            etd: "5 days"
+          };
+          setShippingOptions([freeExpressOption]);
+          setSelectedShipping(freeExpressOption);
+        } else {
+          // Show regular shipping options for orders below ₹599
+          setShippingOptions(response.data);
+          // Auto-select the cheapest option
+          const cheapestOption = response.data.reduce((prev, current) => 
+            prev.rate < current.rate ? prev : current
+          );
+          setSelectedShipping(cheapestOption);
+        }
       } else {
         toast.error(response.message || 'No shipping options available for this address');
         setShippingOptions([]);
@@ -320,7 +334,7 @@ export default function CheckoutPage() {
       total + ((item.offer_price || item.price) * item.quantity), 0
     );
 
-    // Shipping cost logic: Free shipping for orders ≥ ₹599, otherwise charge shipping
+    // Shipping cost logic: Always free for orders ≥ ₹599 when shipping rates are available
     const shippingCost = subtotalWithOfferPrices >= 599 ? 0 : (selectedShipping?.rate || 0);
     
     // Calculate online payment discount (5% off subtotal)
@@ -364,7 +378,15 @@ export default function CheckoutPage() {
       // Extract address ID for shipping_address_id
       const addressId = selectedAddress.id ? parseInt(selectedAddress.id.replace('addr-', '')) : 1;
       
-      // Prepare order data with shipping rate information
+      // Calculate subtotal to determine shipping cost
+      const subtotal = cartSummary.items.reduce((total, item) => 
+        total + ((item.offer_price || item.price) * item.quantity), 0
+      );
+      
+      // Use 0 delivery cost for orders ≥ ₹599, otherwise use selected shipping rate
+      const deliveryCost = subtotal >= 599 ? 0 : selectedShipping.rate;
+      
+      // Prepare order data with updated shipping information
       const orderData: CreateOrderRequest = {
         shipping_address_id: addressId,
         shipping_address: `${selectedAddress.firstName} ${selectedAddress.lastName}, ${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.pincode}, ${selectedAddress.country}`,
@@ -374,7 +396,7 @@ export default function CheckoutPage() {
         carrier_name: selectedShipping.courier_name,
         delivery_option: selectedShipping.courier_name,
         order_notes: deliveryInstructions || '',
-        delivery_cost: selectedShipping.rate,
+        delivery_cost: deliveryCost,
         ...(appliedDiscount && { discount_code: appliedDiscount.code })
       };
 
@@ -410,7 +432,15 @@ export default function CheckoutPage() {
       // Extract address ID for shipping_address_id
       const addressId = selectedAddress.id ? parseInt(selectedAddress.id.replace('addr-', '')) : 1;
       
-      // Prepare order data with shipping rate information
+      // Calculate subtotal to determine shipping cost
+      const subtotal = cartSummary.items.reduce((total, item) => 
+        total + ((item.offer_price || item.price) * item.quantity), 0
+      );
+      
+      // Use 0 delivery cost for orders ≥ ₹599, otherwise use selected shipping rate
+      const deliveryCost = subtotal >= 599 ? 0 : selectedShipping.rate;
+      
+      // Prepare order data with updated shipping information
       const orderData: CreateOrderRequest = {
         shipping_address_id: addressId,
         shipping_address: `${selectedAddress.firstName} ${selectedAddress.lastName}, ${selectedAddress.street}, ${selectedAddress.city}, ${selectedAddress.state}, ${selectedAddress.pincode}, ${selectedAddress.country}`,
@@ -420,7 +450,7 @@ export default function CheckoutPage() {
         carrier_name: selectedShipping.courier_name,
         delivery_option: selectedShipping.courier_name,
         order_notes: deliveryInstructions || '',
-        delivery_cost: selectedShipping.rate,
+        delivery_cost: deliveryCost,
         ...(appliedDiscount && { discount_code: appliedDiscount.code })
       };
 
@@ -1084,12 +1114,35 @@ export default function CheckoutPage() {
                                 <div key={option.courier_id} className="flex items-center space-x-3">
                                   <RadioGroupItem value={option.courier_id.toString()} id={option.courier_id.toString()} />
                                   <Label htmlFor={option.courier_id.toString()} className="flex-1 cursor-pointer">
-                                    <div className="flex justify-between items-center p-3 border border-border rounded-lg hover:bg-muted/20 transition-colors">
+                                    <div className={`flex justify-between items-center p-3 border rounded-lg hover:bg-muted/20 transition-colors ${
+                                      option.courier_id === 999 
+                                        ? 'border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-800' 
+                                        : 'border-border'
+                                    }`}>
                                       <div>
-                                        <p className="font-medium font-sans">{option.courier_name}</p>
-                                        <p className="text-sm text-muted-foreground font-sans">Expected delivery: {option.etd}</p>
+                                        <p className={`font-medium font-sans ${
+                                          option.courier_id === 999 ? 'text-green-700 dark:text-green-600' : ''
+                                        }`}>
+                                          {option.courier_name}
+                                          {option.courier_id === 999 && (
+                                            <span className="ml-2 text-sm font-normal">🎉</span>
+                                          )}
+                                        </p>
+                                        <p className={`text-sm font-sans ${
+                                          option.courier_id === 999 
+                                            ? 'text-green-600 dark:text-green-500' 
+                                            : 'text-muted-foreground'
+                                        }`}>
+                                          Expected delivery: {option.etd}
+                                        </p>
                                       </div>
-                                      <p className="font-semibold font-sans">{formatPrice(option.rate)}</p>
+                                      <p className={`font-semibold font-sans ${
+                                        option.courier_id === 999 
+                                          ? 'text-green-700 dark:text-green-600' 
+                                          : ''
+                                      }`}>
+                                        {option.rate === 0 ? 'FREE' : formatPrice(option.rate)}
+                                      </p>
                                     </div>
                                   </Label>
                                 </div>
