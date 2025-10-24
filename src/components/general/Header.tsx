@@ -27,7 +27,8 @@ import {
   X,
   Sparkles,
   LogOut,
-  UserCircle
+  UserCircle,
+  UserPlus
 } from 'lucide-react';
 
 
@@ -39,6 +40,7 @@ import { CategoryNavItem } from '@/models/interfaces/categories.interface';
 
 interface HeaderProps {
   onLoginClick: () => void;
+  onSignUpClick?: () => void;
   onSearchSubmit?: (query: string) => void;
   showCategories?: boolean;
   categories?: CategoryNavItem[];
@@ -56,6 +58,7 @@ interface HeaderProps {
 
 export function Header({
   onLoginClick,
+  onSignUpClick,
   onSearchSubmit,
   showCategories = true,
   categories = [],
@@ -288,10 +291,18 @@ export function Header({
                     </DropdownMenuItem>
                   </>
                 ) : (
-                  <DropdownMenuItem onSelect={onLoginClick}>
-                    <User className="mr-2 h-4 w-4" />
-                    Login
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem onSelect={onLoginClick}>
+                      <User className="mr-2 h-4 w-4" />
+                      Login
+                    </DropdownMenuItem>
+                    {onSignUpClick && (
+                      <DropdownMenuItem onSelect={onSignUpClick}>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Sign Up
+                      </DropdownMenuItem>
+                    )}
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -501,10 +512,18 @@ export function Header({
                       </DropdownMenuItem>
                     </>
                   ) : (
-                    <DropdownMenuItem onSelect={onLoginClick}>
-                      <User className="mr-2 h-4 w-4" />
-                      Login
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem onSelect={onLoginClick}>
+                        <User className="mr-2 h-4 w-4" />
+                        Login
+                      </DropdownMenuItem>
+                      {onSignUpClick && (
+                        <DropdownMenuItem onSelect={onSignUpClick}>
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Sign Up
+                        </DropdownMenuItem>
+                      )}
+                    </>
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>

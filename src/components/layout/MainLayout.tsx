@@ -17,6 +17,7 @@ function ContentWrapper({ children }: { children: React.ReactNode }) {
         currentUser,
         handleLogoClick,
         handleLoginClick,
+        handleSignUpClick,
         handleSearchSubmit,
         handleCategoryClick,
         handleLogout,
@@ -34,6 +35,7 @@ function ContentWrapper({ children }: { children: React.ReactNode }) {
             {!currentRouteIsDashboard && (
                 <Header
                     onLoginClick={handleLoginClick}
+                    onSignUpClick={handleSignUpClick}
                     onSearchSubmit={handleSearchSubmit}
                     showCategories={true}
                     categories={categoryNavItems}

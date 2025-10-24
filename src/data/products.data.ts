@@ -25,16 +25,16 @@ export const getSimilarProducts = (productId: string, categoryId: string): Produ
 
 // Banners Data
 export const mockBanners: Banner[] = [
-  {
-    id: 'banner-1',
-    title: ' ',
-    subtitle: ' ',
-    image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/banners/WhatsApp%20Image%202025-10-18%20at%201.25.20%20PM.jpeg?w=1200&h=600&fit=crop',
-    ctaText: '',
-    ctaLink: '/',
-    isActive: false,
-    showOverlay: false // No overlay for the first banner
-  },
+  //{
+  //  id: 'banner-1',
+  //  title: ' ',
+  //  subtitle: ' ',
+  //  image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/banners/WhatsApp%20Image%202025-10-18%20at%201.25.20%20PM.jpeg?w=1200&h=600&fit=crop',
+  //  ctaText: '',
+  //  ctaLink: '/',
+  //  isActive: false,
+  //  showOverlay: false // No overlay for the first banner
+  //},
   {
     id: 'banner-2',
     title: 'Jewels as Unique as You Are',

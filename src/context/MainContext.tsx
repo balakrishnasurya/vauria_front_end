@@ -25,6 +25,7 @@ interface MainContextProps {
     
     // Auth Handlers (Placed first for emphasis)
     handleLoginClick: () => void;
+    handleSignUpClick: () => void;
     handleLogout: () => Promise<void>;
     handleLogin: (email: string) => Promise<void>;
     handleCloseLogin: () => void;
@@ -164,6 +165,12 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
         }
     }, [pathname, router]);
 
+    const handleSignUpClick = useCallback(() => {
+        // Always navigate to login page with signup intent
+        router.push('/login?tab=signup');
+        setShowLoginInline(false);
+    }, [router]);
+
     const handleCloseLogin = useCallback(() => {
         setShowLoginInline(false);
     }, []);
@@ -290,6 +297,7 @@ export function MainContextProvider({ children }: { children: React.ReactNode })
         currentRouteIsDashboard,
         
         handleLoginClick,
+        handleSignUpClick,
         handleLogout,
         handleLogin,
         handleCloseLogin,

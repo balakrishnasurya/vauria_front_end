@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useMainContext } from '@/context/MainContext';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,12 @@ import { authService } from '@/services/auth.service';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { handleLogin: handleLoginContext } = useMainContext();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loginMessage, setLoginMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('login');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
@@ -31,7 +33,7 @@ export default function LoginPage() {
     gender: 'male' as 'male' | 'female' | 'other'
   });
 
-  // Check for login message on component mount
+  // Check for login message and URL parameters on component mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const message = localStorage.getItem('vauria_login_message');
@@ -39,7 +41,13 @@ export default function LoginPage() {
         setLoginMessage(message);
       }
     }
-  }, []);
+    
+    // Check URL parameters for tab
+    const tab = searchParams.get('tab');
+    if (tab === 'signup') {
+      setActiveTab('signup');
+    }
+  }, [searchParams]);
 
   // Local helpers
   const goHome = () => router.push('/');
@@ -150,7 +158,7 @@ export default function LoginPage() {
                   <p className="text-destructive text-sm font-sans">{error}</p>
                 </motion.div>
               )}
-              <Tabs defaultValue="login" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6">
                   <TabsTrigger value="login" className="font-sans">Sign In</TabsTrigger>
                   <TabsTrigger value="signup" className="font-sans">Sign Up</TabsTrigger>
