@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useMainContext } from '@/context/MainContext';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,6 @@ import { authService } from '@/services/auth.service';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { handleLogin: handleLoginContext } = useMainContext();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,14 +39,15 @@ export default function LoginPage() {
       if (message) {
         setLoginMessage(message);
       }
+
+      // Read URL search params from window to avoid next/navigation hook during prerender
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab === 'signup') {
+        setActiveTab('signup');
+      }
     }
-    
-    // Check URL parameters for tab
-    const tab = searchParams.get('tab');
-    if (tab === 'signup') {
-      setActiveTab('signup');
-    }
-  }, [searchParams]);
+  }, []);
 
   // Local helpers
   const goHome = () => router.push('/');
