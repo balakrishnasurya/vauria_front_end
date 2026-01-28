@@ -83,7 +83,7 @@ export const mockCategories: Category[] = [
     name: 'Rings, Anklets, Nosepins',
     slug: 'rings-anklets-nosepins',
     description: 'Complete collection of rings, anklets and nosepins',
-    image: 'https://vauria-images.blr1.cdn.digitaloceanspaces.com/Rings-Anklets-Nosepins/rings-banner-2.JPG?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnb2xkJTIwcmluZ3MlMjBhbmtsZXRzJTIwbm9zZXBpbnMlMjBqZXdlbHJ5JTIwc2V0fGVufDF8fHx8MTc1OTEyMDU5OHww&ixlib=rb-4.1.0&q=80&w=1080',
+    image: 'https://vauriaimages.sfo3.cdn.digitaloceanspaces.com/Banners/8.rings-banner.JPG?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnb2xkJTIwcmluZ3MlMjBhbmtsZXRzJTIwbm9zZXBpbnMlMjBqZXdlbHJ5JTIwc2V0fGVufDF8fHx8MTc1OTEyMDU5OHww&ixlib=rb-4.1.0&q=80&w=1080',
     is_active: true,
     sort_order: 8,
     parent_id: null,
